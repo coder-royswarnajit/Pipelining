@@ -1,17 +1,22 @@
 import pandas as pd
-from summary import dataset_summary
-from missing import missing_report
-from correlation import correlation_heatmap
-from visualization import distribution_plots
-from eda_warnings import generate_warnings
-from type_detection import detect_column_types
-from outlier import detect_outliers
-from skewness import detect_skewness
-from cardinality import analyze_cardinality
+
+#PROFILING MODULES
+from Profiling.summary import dataset_summary
+from Profiling.missing import missing_report
+from Profiling.correlation import correlation_heatmap
+from Profiling.visualization import distribution_plots
+from Profiling.eda_warnings import generate_warnings
+from Profiling.type_detection import detect_column_types
+from Profiling.outlier import detect_outliers
+from Profiling.skewness import detect_skewness
+from Profiling.cardinality import analyze_cardinality
+
+#PREPROCESSING MODULES
 
 
-df = pd.read_csv('C:/Users/309168/Desktop/CODES/Pipelining/uci-secom.csv')
 
+#df=pd.read_csv('C:/Users/309168/Desktop/CODES/Pipelining/uci-secom.csv')
+df=pd.read_csv('C:/Users/309168/Desktop/CODES/Pipelining/ai4i2020.csv')
 print("\nDATASET SUMMARY:")
 print(dataset_summary(df))
 

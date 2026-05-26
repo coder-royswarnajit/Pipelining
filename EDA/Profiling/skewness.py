@@ -43,10 +43,8 @@ def detect_skewness(df):
         else:
             direction = "Symmetric"
 
-        skewness_report[col] = {
-            "skewness": round(skew_value, 3),
-            "skew_type": skew_type,
-            "direction": direction
-        }
+        skewness_report[col] = {"skewness": round(skew_value, 3),
+                                "skew_type": skew_type,
+                                "direction": direction}
 
     return skewness_report
