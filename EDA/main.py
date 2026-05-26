@@ -12,11 +12,16 @@ from Profiling.skewness import detect_skewness
 from Profiling.cardinality import analyze_cardinality
 
 #PREPROCESSING MODULES
+from Preprocess.missing_handler import handle_missing_values
+from Preprocess.outlier_handling import handle_outliers
+from Preprocess.encoding import encode_features
 
 
 
-#df=pd.read_csv('C:/Users/309168/Desktop/CODES/Pipelining/uci-secom.csv')
-df=pd.read_csv('C:/Users/309168/Desktop/CODES/Pipelining/ai4i2020.csv')
+df=pd.read_csv('C:/Users/309168/Desktop/CODES/Pipelining/Data/uci-secom.csv')
+#df=pd.read_csv('C:/Users/309168/Desktop/CODES/Pipelining/Data/ai4i2020.csv')
+
+'''
 print("\nDATASET SUMMARY:")
 print(dataset_summary(df))
 
@@ -56,3 +61,16 @@ print(analyze_cardinality(df))
 #Plots
 correlation_heatmap(df)
 distribution_plots(df)
+'''
+
+
+
+
+
+
+
+#Preprocessing
+df = handle_outliers(df)
+df = handle_missing_values(df)
+df = encode_features(df)
+print(df)
