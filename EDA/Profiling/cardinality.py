@@ -26,10 +26,10 @@ def analyze_cardinality(df):
         if unique_ratio > 0.9:
             cardinality_type = "Identifier-like"
 
-        elif unique_count > 50:
+        elif unique_ratio >= 0.50:
             cardinality_type = "High Cardinality"
 
-        elif unique_count > 15:
+        elif unique_ratio >= 0.10:
             cardinality_type = "Moderate Cardinality"
 
         else:

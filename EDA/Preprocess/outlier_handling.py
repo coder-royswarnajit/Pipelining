@@ -7,7 +7,7 @@ from Profiling.type_detection import detect_column_types
 def handle_outliers(df):
     df=df.copy()
     
-    # METADATA
+
     outlier_info = detect_outliers(df)
     type_info = detect_column_types(df)
 
@@ -21,7 +21,7 @@ def handle_outliers(df):
 
         outlier_count = (info["outlier_count"])
 
-        # Skip clean columns
+        # Skipping clean columns
         if outlier_count == 0:
             continue
 

@@ -2,3 +2,9 @@ pandas
 numpy
 matplotlib
 seaborn
+scikit-learn
+imbalanced-learn
+groq
+python-dotenv
+scipy
+joblib

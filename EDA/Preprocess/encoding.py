@@ -5,23 +5,17 @@ from Profiling.type_detection import detect_column_types
 from Profiling.cardinality import analyze_cardinality
 
 
-def encode_features(df, target_col=None):
+def encode_features(df):
     df = df.copy()
     encoded_df = pd.DataFrame(index=df.index)
 
-    # METADATA
+
     type_info = detect_column_types(df)
     cardinality_info = analyze_cardinality(df)
 
     for col in df.columns:
 
-        # 1. Skip target column
-        if target_col and col == target_col:
-            encoded_df[col] = df[col]
-            print(f"Skipped target column: {col}")
-            continue
-
-        # 2. Drop constant columns
+        #Drop constant columns
         if df[col].nunique() <= 1:
             print(f"Dropped constant column: {col}")
             continue
@@ -84,6 +78,6 @@ def encode_features(df, target_col=None):
             encoded_df[col] = df[col]
             print(f"Numeric column retained: {col}")
 
-    print("\n✅ Encoding completed.")
+    print("\nEncoding completed.")
 
     return encoded_df

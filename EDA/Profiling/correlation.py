@@ -1,8 +1,11 @@
+import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+
 '''Finds Correlation Heatmap Between Each and Every Numerical Feature'''
-def correlation_heatmap(df):
+def correlation_heatmap(df, plot_folder="eda_plots"):
+
     numeric_df = df.select_dtypes(include=['int64', 'float64'])
 
     # Remove binary and classification-like columns
@@ -17,6 +20,7 @@ def correlation_heatmap(df):
         # Binary or classification-like feature
         if unique_count <= 2:
             excluded_columns.append(col)
+
         # Continuous feature
         else:
             continuous_columns.append(col)
@@ -29,23 +33,39 @@ def correlation_heatmap(df):
     # Correlation matrix
     if filtered_df.empty:
         print("No continuous columns available for correlation heatmap.")
-        return
+        return None
 
     corr = filtered_df.corr()
+
+    # Create plot folder
+    os.makedirs(plot_folder, exist_ok=True)
 
     # Heatmap
     plt.figure(figsize=(14, 10))
 
-    sns.heatmap(corr,cmap='coolwarm',center=0,cbar=True,annot=True,fmt='.2f',square=True)
+    sns.heatmap(
+        corr,
+        cmap='coolwarm',
+        center=0,
+        cbar=True,
+        annot=True,
+        fmt='.2f',
+        square=True
+    )
 
     plt.title('Correlation Heatmap (Continuous Features Only)')
-    plt.show()
+
+    # Save graph instead of only showing it
+    heatmap_path = os.path.join(plot_folder, "correlation_heatmap.png")
+    plt.savefig(heatmap_path, bbox_inches="tight")
+    plt.close()
+
+    print(f"Correlation heatmap saved at: {heatmap_path}")
 
     # Strong correlations
     print('Highly Correlated Features:')
 
     columns = corr.columns
-
     checked_pairs = set()
 
     for i in range(len(columns)):
@@ -59,7 +79,11 @@ def correlation_heatmap(df):
 
                 if pair not in checked_pairs:
 
-                    print(f'{columns[i]} <-> {columns[j]} : '
-                          f'{corr_value:.2f}')
+                    print(
+                        f'{columns[i]} <-> {columns[j]} : '
+                        f'{corr_value:.2f}'
+                    )
 
                     checked_pairs.add(pair)
+
+    return heatmap_path

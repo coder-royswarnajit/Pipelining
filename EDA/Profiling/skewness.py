@@ -9,7 +9,6 @@ def detect_skewness(df):
     numeric_df = df.select_dtypes(include=['int64', 'float64'])
 
     for col in numeric_df.columns:
-
         series = numeric_df[col].dropna()
 
         # Skip empty columns

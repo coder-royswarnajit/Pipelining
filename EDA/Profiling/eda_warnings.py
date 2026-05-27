@@ -14,20 +14,6 @@ def generate_warnings(df):
         if missing_percent > 50:
             warnings.append(f'{col} has more than 50% missing values')
 
-    # Detect binary columns
-    binary_columns = []
-
-    for col in df.columns:
-        unique_values = df[col].dropna().unique()
-
-        if len(unique_values) == 2:
-            binary_columns.append(col)
-
-    if binary_columns:
-        warnings.append(
-            f'Binary columns detected: {binary_columns}'
-        )
-
     # Highly correlated features
     corr_matrix = df.corr(numeric_only=True)
 
@@ -52,4 +38,7 @@ def generate_warnings(df):
 
                     checked_pairs.add(pair)
 
+    if warnings is None or len(warnings) == 0:
+        warnings.append("No warnings detected.")
+        
     return warnings
