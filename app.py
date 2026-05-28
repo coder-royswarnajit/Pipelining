@@ -1,145 +1,424 @@
 import os
 import sys
+import io
 import pandas as pd
+import streamlit as st
 
-# PROJECT ROOT
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
+    Image
+)
+
+# ==============================
+# PATH SETUP
+# ==============================
+
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+
+EDA_PATH = os.path.join(PROJECT_ROOT, "EDA")
+AI_BRAIN_PATH = os.path.join(PROJECT_ROOT, "AI_Brain")
 
 if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
-# ADD EDA FOLDER TO PATH
-EDA_PATH = os.path.join(PROJECT_ROOT, "EDA")
-
 if EDA_PATH not in sys.path:
     sys.path.append(EDA_PATH)
 
-# IMPORT PROFILING PIPELINE
-from EDA.Profiling.profiling_pipeline import run_eda_pipeline
+if AI_BRAIN_PATH not in sys.path:
+    sys.path.append(AI_BRAIN_PATH)
 
-# IMPORT AI BRAIN
+# ==============================
+# IMPORT PIPELINES
+# ==============================
+
+from EDA.eda_main import run_eda_workflow
 from AI_Brain.brain_pipeline import run_ai_brain_pipeline
 
 
-def create_metadata_from_eda_results(df, eda_results):
+# ==============================
+# PDF REPORT FUNCTION
+# ==============================
+def show_eda_section(title, data):
     """
-    Creates metadata directly from EDA pipeline results.
-    This bypasses build_metadata().
+    Displays EDA output properly in Streamlit.
     """
 
-    metadata = {}
+    st.markdown(f"### {title}")
 
-    column_types = eda_results.get("column_types", {})
-    missing_report = eda_results.get("missing_report", {})
-    outlier_report = eda_results.get("outlier_report", {})
-    skewness_report = eda_results.get("skewness_report", {})
-    cardinality_report = eda_results.get("cardinality_report", {})
+    if isinstance(data, pd.DataFrame):
+        st.dataframe(data, use_container_width=True)
 
-    for col in df.columns:
+    elif isinstance(data, pd.Series):
+        st.dataframe(data.to_frame(), use_container_width=True)
 
-        metadata[col] = {
-            "dtype": str(df[col].dtype),
-            "missing_count": int(df[col].isnull().sum()),
-            "missing_percent": round(
-                (df[col].isnull().sum() / len(df)) * 100,
-                2
-            ),
-            "unique_count": int(df[col].nunique(dropna=True)),
-            "sample_values": df[col].dropna().head(5).tolist()
-        }
+    elif isinstance(data, dict):
+        try:
+            df_data = pd.DataFrame(data).T
+            st.dataframe(df_data, use_container_width=True)
+        except Exception:
+            st.json(data)
 
-        # Add detected type
-        if col in column_types:
-            metadata[col]["detected_type"] = column_types[col].get(
-                "detected_type"
-            )
+    elif isinstance(data, list):
+        if len(data) == 0:
+            st.info("No items found.")
         else:
-            metadata[col]["detected_type"] = "unknown"
+            for item in data:
+                st.write(item)
 
-        # Add missing report if available
-        if isinstance(missing_report, dict) and col in missing_report:
-            metadata[col]["missing_info"] = missing_report[col]
+    else:
+        st.write(data)
+def make_pdf_report(df, eda_output, ai_results): 
+    """
+    Creates a downloadable PDF report in memory.
+    """
 
-        # Add outlier report if available
-        if isinstance(outlier_report, dict) and col in outlier_report:
-            metadata[col]["outlier_info"] = outlier_report[col]
+    buffer = io.BytesIO()
 
-        # Add skewness report if available
-        if isinstance(skewness_report, dict) and col in skewness_report:
-            metadata[col]["skewness_info"] = skewness_report[col]
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=40,
+        leftMargin=40,
+        topMargin=40,
+        bottomMargin=40
+    )
 
-        # Add cardinality report if available
-        if isinstance(cardinality_report, dict) and col in cardinality_report:
-            metadata[col]["cardinality_info"] = cardinality_report[col]
+    styles = getSampleStyleSheet()
+    story = []
 
-    return metadata
+    story.append(Paragraph("AI Brain EDA Report", styles["Title"]))
+    story.append(Spacer(1, 12))
 
+    # Dataset overview
+    story.append(Paragraph("Dataset Overview", styles["Heading2"]))
+    story.append(Paragraph(f"Rows: {df.shape[0]}", styles["Normal"]))
+    story.append(Paragraph(f"Columns: {df.shape[1]}", styles["Normal"]))
+    story.append(Spacer(1, 12))
+
+    # First 5 rows
+    story.append(Paragraph("First 5 Rows", styles["Heading2"]))
+
+    head_df = df.head(5).copy().astype(str)
+    table_data = [list(head_df.columns)] + head_df.values.tolist()
+
+    table = Table(table_data, repeatRows=1)
+
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 7),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]
+        )
+    )
+
+    story.append(table)
+    story.append(Spacer(1, 14))
+
+    # AI Brain output
+    story.append(Paragraph("AI Brain Analysis", styles["Heading2"]))
+
+    if isinstance(ai_results, dict):
+        for key, value in ai_results.items():
+            story.append(
+                Paragraph(
+                    str(key).replace("_", " ").title(),
+                    styles["Heading3"]
+                )
+            )
+
+            safe_text = str(value).replace("\n", "<br/>")
+            story.append(Paragraph(safe_text, styles["BodyText"]))
+            story.append(Spacer(1, 10))
+    else:
+        safe_text = str(ai_results).replace("\n", "<br/>")
+        story.append(Paragraph(safe_text, styles["BodyText"]))
+
+    story.append(Spacer(1, 14))
+
+    # Preprocessed shape
+    story.append(Paragraph("Preprocessing Output", styles["Heading2"]))
+
+    preprocessed_df = eda_output.get("preprocessed_df")
+
+    if preprocessed_df is not None:
+        story.append(
+            Paragraph(
+                f"Preprocessed Shape: {preprocessed_df.shape[0]} rows, "
+                f"{preprocessed_df.shape[1]} columns",
+                styles["Normal"]
+            )
+        )
+    else:
+        story.append(
+            Paragraph(
+                "Preprocessed data not available.",
+                styles["Normal"]
+            )
+        )
+
+    story.append(Spacer(1, 14))
+
+    # Metadata summary
+    story.append(Paragraph("Metadata Summary", styles["Heading2"]))
+
+    metadata = eda_output.get("metadata", {})
+
+    metadata_rows = [
+        ["Column", "Dtype", "Unique", "Missing %", "Detected Type"]
+    ]
+
+    for col, info in metadata.items():
+        metadata_rows.append(
+            [
+                str(col),
+                str(info.get("dtype", "")),
+                str(info.get("unique_count", "")),
+                str(info.get("missing_percent", "")),
+                str(info.get("detected_type", "")),
+            ]
+        )
+
+    metadata_table = Table(metadata_rows, repeatRows=1)
+
+    metadata_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 7),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]
+        )
+    )
+
+    story.append(metadata_table)
+    story.append(Spacer(1, 14))
+
+    # Graphs in PDF
+    story.append(Paragraph("EDA Graphs", styles["Heading2"]))
+
+    plot_paths = eda_output.get("eda_results", {}).get("plot_paths", [])
+
+    if len(plot_paths) > 0:
+        for plot_path in plot_paths:
+            if os.path.exists(plot_path):
+                story.append(
+                    Paragraph(
+                        os.path.basename(plot_path),
+                        styles["Heading3"]
+                    )
+                )
+
+                try:
+                    img = Image(plot_path)
+                    img.drawHeight = 280
+                    img.drawWidth = 450
+                    story.append(img)
+                    story.append(Spacer(1, 12))
+                except Exception:
+                    story.append(
+                        Paragraph(
+                            f"Could not load graph: {plot_path}",
+                            styles["Normal"]
+                        )
+                    )
+    else:
+        story.append(
+            Paragraph(
+                "No graphs were generated.",
+                styles["Normal"]
+            )
+        )
+
+    doc.build(story)
+
+    buffer.seek(0)
+
+    return buffer
+
+
+# ==============================
+# STREAMLIT APP
+# ==============================
 
 def main():
 
-    print("\n==============================")
-    print("AI BRAIN TEST STARTED")
-    print("==============================")
-
-    dataset_path = os.path.join(
-        PROJECT_ROOT,
-        "Data",
-        "ai4i2020.csv"
+    st.set_page_config(
+        page_title="AI Brain EDA Dashboard",
+        layout="wide"
     )
 
-    # Alternative dataset
-    # dataset_path = os.path.join(
-    #     PROJECT_ROOT,
-    #     "Data",
-    #     "uci-secom.csv"
-    # )
+    st.title("AI Brain EDA Dashboard")
 
-    print("\nLoading dataset...")
-    print(f"Dataset path: {dataset_path}")
-
-    df = pd.read_csv(dataset_path)
-
-    print("\nDataset loaded successfully")
-    print(f"Rows: {df.shape[0]}")
-    print(f"Columns: {df.shape[1]}")
-
-    print("\nFirst 5 rows:")
-    print(df.head())
-
-    print("\nRunning profiling pipeline...")
-
-    eda_results = run_eda_pipeline(
-        df,
-        save_plots=False
+    st.write(
+        "Upload a CSV file. The app will run EDA, preprocessing, "
+        "AI Brain analysis, show graphs, and generate a PDF report."
     )
 
-    print("\nCreating metadata directly inside app.py...")
-
-    metadata = create_metadata_from_eda_results(
-        df=df,
-        eda_results=eda_results
+    uploaded_file = st.file_uploader(
+        "Upload CSV file",
+        type=["csv"]
     )
 
-    print("\nMetadata created successfully.")
+    if uploaded_file is None:
+        st.info("Upload a CSV file to start.")
+        return
 
-    print("\nRunning AI Brain...")
+    try:
+        df = pd.read_csv(uploaded_file)
+    except Exception as e:
+        st.error(f"Could not read CSV file: {e}")
+        return
 
-    ai_results = run_ai_brain_pipeline(
-        metadata=metadata,
-        df=df
-    )
+    st.success("CSV uploaded successfully.")
 
-    print("\n==============================")
-    print("AI BRAIN OUTPUT")
-    print("==============================")
+    col1, col2 = st.columns(2)
 
-    for key, value in ai_results.items():
-        print(f"\n--- {key.upper()} ---")
-        print(value)
+    with col1:
+        st.metric("Rows", df.shape[0])
 
-    print("\n==============================")
-    print("AI BRAIN TEST COMPLETED")
-    print("==============================")
+    with col2:
+        st.metric("Columns", df.shape[1])
+
+    st.subheader("Dataset Preview")
+    st.dataframe(df.head(10), use_container_width=True)
+
+    run_button = st.button("Generate EDA Report")
+
+    if run_button:
+
+        plot_folder = os.path.join(PROJECT_ROOT, "eda_plots")
+
+        with st.spinner("Running EDA and preprocessing..."):
+            eda_output = run_eda_workflow(
+                df=df,
+                save_plots=True,
+                plot_folder=plot_folder
+            )
+
+        st.success("EDA and preprocessing completed.")
+
+        metadata = eda_output["metadata"]
+
+        with st.spinner("Running AI Brain analysis..."):
+            ai_results = run_ai_brain_pipeline(
+                metadata=metadata,
+                df=df
+            )
+
+        st.success("AI Brain analysis completed.")
+
+        # ==============================
+        # AI OUTPUT
+        # ==============================
+
+        st.subheader("AI Brain Output")
+
+        if isinstance(ai_results, dict):
+            for key, value in ai_results.items():
+                st.markdown(f"### {key.replace('_', ' ').title()}")
+                st.write(value)
+        else:
+            st.write(ai_results)
+        # ==============================
+        # FULL EDA RESULTS
+        # ==============================
+
+        st.subheader("Complete EDA Results")
+
+        eda_results = eda_output.get("eda_results", {})
+
+        eda_display_order = [
+            "dataset_summary",
+            "missing_report",
+            "warnings",
+            "column_types",
+            "outlier_report",
+            "skewness_report",
+            "cardinality_report",
+        ]
+
+        for key in eda_display_order:
+            if key in eda_results:
+                section_title = key.replace("_", " ").title()
+
+                with st.expander(section_title, expanded=False):
+                    show_eda_section(section_title, eda_results[key])
+        # ==============================
+        # PREPROCESSED DATA
+        # ==============================
+
+        st.subheader("Preprocessed Dataset Preview")
+
+        preprocessed_df = eda_output.get("preprocessed_df")
+
+        if preprocessed_df is not None:
+            st.dataframe(
+                preprocessed_df.head(10),
+                use_container_width=True
+            )
+        else:
+            st.info("Preprocessed dataset not available.")
+
+        # ==============================
+        # METADATA
+        # ==============================
+
+        st.subheader("Metadata Preview")
+
+        metadata_df = pd.DataFrame(metadata).T
+        st.dataframe(metadata_df, use_container_width=True)
+
+        # ==============================
+        # EDA GRAPHS
+        # ==============================
+
+        st.subheader("EDA Graphs")
+
+        plot_paths = eda_output["eda_results"].get("plot_paths", [])
+
+        if len(plot_paths) > 0:
+            for plot_path in plot_paths:
+
+                if os.path.exists(plot_path):
+                    st.image(
+                        plot_path,
+                        caption=os.path.basename(plot_path),
+                        use_container_width=True
+                    )
+                else:
+                    st.warning(f"Graph file not found: {plot_path}")
+        else:
+            st.info("No graphs were generated.")
+
+        # ==============================
+        # PDF DOWNLOAD
+        # ==============================
+
+        pdf_buffer = make_pdf_report(
+            df=df,
+            eda_output=eda_output,
+            ai_results=ai_results
+        )
+
+        st.download_button(
+            label="Download PDF Report",
+            data=pdf_buffer,
+            file_name="ai_brain_eda_report.pdf",
+            mime="application/pdf"
+        )
 
 
 if __name__ == "__main__":

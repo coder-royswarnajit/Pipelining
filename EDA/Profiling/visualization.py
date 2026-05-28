@@ -3,15 +3,16 @@ import math
 import matplotlib.pyplot as plt
 
 
-'''Shows the data distribution for numerical columns'''
+'''Shows the data distribution for numerical and categorical columns'''
 def distribution_plots(df, plot_folder="eda_plots"):
 
     numeric_df = df.select_dtypes(include=['int64', 'float64'])
 
     binary_cols = []
     continuous_cols = []
+    categorical_cols = []
 
-    # Separate binary and continuous columns
+    # Separate numeric binary and continuous columns
     for col in numeric_df.columns:
         unique_values = numeric_df[col].dropna().unique()
 
@@ -20,12 +21,24 @@ def distribution_plots(df, plot_folder="eda_plots"):
         else:
             continuous_cols.append(col)
 
+    # Detect text/categorical label columns
+    for col in df.columns:
+
+        if col in numeric_df.columns:
+            continue
+
+        unique_count = df[col].dropna().nunique()
+
+        # Pie charts should be used only for low-cardinality text columns
+        if unique_count >= 2 and unique_count <= 10:
+            categorical_cols.append(col)
+
     continuous_cols = continuous_cols[:20]
 
     os.makedirs(plot_folder, exist_ok=True)
     plot_paths = []
 
-    # Continuous column distributions
+    # Continuous column line plots
     if continuous_cols:
         n_cols = 3
         n_rows = math.ceil(len(continuous_cols) / n_cols)
@@ -59,15 +72,16 @@ def distribution_plots(df, plot_folder="eda_plots"):
 
         continuous_plot_path = os.path.join(
             plot_folder,
-            "continuous_distribution_plots.png"
+            "continuous_line_plots.png"
         )
+
         plt.savefig(continuous_plot_path, bbox_inches="tight")
         plt.close()
 
-        print(f"Continuous distribution plots saved at: {continuous_plot_path}")
+        print(f"Continuous line plots saved at: {continuous_plot_path}")
         plot_paths.append(continuous_plot_path)
 
-    # Binary column distributions
+    # Numeric binary column pie charts
     for col in binary_cols:
         value_counts = df[col].value_counts()
 
@@ -82,15 +96,55 @@ def distribution_plots(df, plot_folder="eda_plots"):
         plt.title(f'Binary Distribution - {col}')
         plt.tight_layout()
 
-        safe_col_name = str(col).replace(" ", "_").replace("/", "_").replace("\\", "_")
+        safe_col_name = (
+            str(col)
+            .replace(" ", "_")
+            .replace("/", "_")
+            .replace("\\", "_")
+        )
+
         binary_plot_path = os.path.join(
             plot_folder,
             f"binary_distribution_{safe_col_name}.png"
         )
+
         plt.savefig(binary_plot_path, bbox_inches="tight")
         plt.close()
 
         print(f"Binary distribution plot saved at: {binary_plot_path}")
         plot_paths.append(binary_plot_path)
+
+    # Text/categorical label pie charts
+    for col in categorical_cols:
+        value_counts = df[col].value_counts()
+
+        plt.figure(figsize=(6, 5))
+        plt.pie(
+            x=value_counts,
+            labels=value_counts.index,
+            autopct='%1.1f%%',
+            startangle=90
+        )
+
+        plt.title(f'Categorical Distribution - {col}')
+        plt.tight_layout()
+
+        safe_col_name = (
+            str(col)
+            .replace(" ", "_")
+            .replace("/", "_")
+            .replace("\\", "_")
+        )
+
+        categorical_plot_path = os.path.join(
+            plot_folder,
+            f"categorical_distribution_{safe_col_name}.png"
+        )
+
+        plt.savefig(categorical_plot_path, bbox_inches="tight")
+        plt.close()
+
+        print(f"Categorical distribution plot saved at: {categorical_plot_path}")
+        plot_paths.append(categorical_plot_path)
 
     return plot_paths
