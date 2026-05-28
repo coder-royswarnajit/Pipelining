@@ -7,14 +7,7 @@ import streamlit as st
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.platypus import (
-    SimpleDocTemplate,
-    Paragraph,
-    Spacer,
-    Table,
-    TableStyle,
-    Image
-)
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 
 # ==============================
 # PATH SETUP
@@ -60,7 +53,7 @@ def show_eda_section(title, data):
 
     elif isinstance(data, dict):
         try:
-            df_data = pd.DataFrame(data).T
+            df_data = make_streamlit_safe_dataframe(data)
             st.dataframe(df_data, use_container_width=True)
         except Exception:
             st.json(data)
@@ -248,6 +241,21 @@ def make_pdf_report(df, eda_output, ai_results):
 
     return buffer
 
+def make_streamlit_safe_dataframe(data):
+    """
+    Converts dict/list/object-heavy data into a Streamlit-safe DataFrame.
+    Prevents PyArrow conversion errors from mixed object columns.
+    """
+
+    df_safe = pd.DataFrame(data).T
+
+    for col in df_safe.columns:
+        df_safe[col] = df_safe[col].apply(
+            lambda x: str(x) if isinstance(x, (list, dict, tuple, set)) else x
+        )
+
+    return df_safe.astype(str)
+
 
 # ==============================
 # STREAMLIT APP
@@ -378,7 +386,7 @@ def main():
 
         st.subheader("Metadata Preview")
 
-        metadata_df = pd.DataFrame(metadata).T
+        metadata_df = make_streamlit_safe_dataframe(metadata)
         st.dataframe(metadata_df, use_container_width=True)
 
         # ==============================
