@@ -21,20 +21,15 @@ def box_plots(df, plot_folder="eda_plots"):
         unique_count = numeric_df[col].dropna().nunique()
         unique_ratio = unique_count / total_rows
 
-        # 1. Exclude binary columns
         if unique_count <= 2:
             continue
 
-        # 2. Exclude ID-like columns by name
         if any(word in col_lower for word in ["id", "udi", "index"]):
             continue
 
-        # 3. Exclude target/label/failure-like columns by name
         if any(word in col_lower for word in ["target", "label", "class", "failure"]):
             continue
 
-        # 4. Exclude columns that behave like IDs
-        # Example: UDI has almost every value unique
         if unique_ratio > 0.90:
             continue
 
@@ -43,7 +38,6 @@ def box_plots(df, plot_folder="eda_plots"):
     continuous_cols = continuous_cols[:20]
 
     if len(continuous_cols) == 0:
-        print("No useful continuous numeric columns available for box plots.")
         return None
 
     os.makedirs(plot_folder, exist_ok=True)
@@ -51,11 +45,7 @@ def box_plots(df, plot_folder="eda_plots"):
     n_cols = 3
     n_rows = math.ceil(len(continuous_cols) / n_cols)
 
-    fig, axes = plt.subplots(
-        n_rows,
-        n_cols,
-        figsize=(15, 4 * n_rows)
-    )
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 4 * n_rows))
 
     if not hasattr(axes, "flatten"):
         axes = [axes]
@@ -63,10 +53,7 @@ def box_plots(df, plot_folder="eda_plots"):
         axes = axes.flatten()
 
     for i, col in enumerate(continuous_cols):
-        axes[i].boxplot(
-            numeric_df[col].dropna(),
-            vert=True
-        )
+        axes[i].boxplot(numeric_df[col].dropna(), vert=True)
 
         axes[i].set_title(f"Box Plot of {col}")
         axes[i].set_ylabel(col)
@@ -76,16 +63,10 @@ def box_plots(df, plot_folder="eda_plots"):
 
     plt.tight_layout()
 
-    box_plot_path = os.path.join(
-        plot_folder,
-        "box_plots.png"
-    )
+    box_plot_path = os.path.join(plot_folder, "box_plots.png")
 
     plt.savefig(box_plot_path, bbox_inches="tight")
     plt.close()
 
-    print(f"Box plots saved at: {box_plot_path}")
-    print("Columns used for box plots:")
-    print(continuous_cols)
 
     return box_plot_path

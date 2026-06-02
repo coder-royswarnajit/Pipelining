@@ -1,150 +1,263 @@
 import os
-import math
+import pandas as pd
 import matplotlib.pyplot as plt
 
+try:
+    import matplotalt as maa
+except Exception:
+    maa = None
 
-'''Shows the data distribution for numerical and categorical columns'''
-def distribution_plots(df, plot_folder="eda_plots"):
 
-    numeric_df = df.select_dtypes(include=['int64', 'float64'])
+def safe_column_name(col):
+    return (
+        str(col)
+        .replace(" ", "_")
+        .replace("/", "_")
+        .replace("\\", "_")
+        .replace("[", "")
+        .replace("]", "")
+        .replace("(", "")
+        .replace(")", "")
+    )
 
-    binary_cols = []
-    continuous_cols = []
-    categorical_cols = []
 
-    # Separate numeric binary and continuous columns
-    for col in numeric_df.columns:
-        unique_values = numeric_df[col].dropna().unique()
+def get_alt_text():
+    """
+    Generates alt text for the current matplotlib figure.
+    Falls back safely if matplotalt is not available.
+    """
 
-        if len(unique_values) == 2:
-            binary_cols.append(col)
-        else:
-            continuous_cols.append(col)
+    if maa is None:
+        return "Alt text not available because matplotalt is not installed."
 
-    # Detect text/categorical label columns
-    for col in df.columns:
+    try:
+        return maa.generate_alt_text(plt.gcf())
 
-        if col in numeric_df.columns:
-            continue
+    except Exception as e:
+        return f"Alt text generation failed: {str(e)}"
 
-        unique_count = df[col].dropna().nunique()
 
-        # Pie charts should be used only for low-cardinality text columns
-        if unique_count >= 2 and unique_count <= 10:
-            categorical_cols.append(col)
+def summarize_numeric_series(series):
+    series = series.dropna()
 
-    continuous_cols = continuous_cols[:20]
+    if series.empty:
+        return {
+            "count": 0,
+            "message": "No valid numeric values available."
+        }
+
+    return {
+        "count": int(series.count()),
+        "mean": round(float(series.mean()), 3),
+        "median": round(float(series.median()), 3),
+        "std": round(float(series.std()), 3),
+        "min": round(float(series.min()), 3),
+        "max": round(float(series.max()), 3),
+        "skewness": round(float(series.skew()), 3)
+    }
+
+
+def generate_ai_recommended_plots(
+    df,
+    plot_recommendations,
+    plot_folder="eda_plots"
+):
+    """
+    Generates plots based on AI_Brain recommendations.
+
+    Returns:
+    {
+        "plot_paths": [...],
+        "plot_summaries": [...]
+    }
+    """
 
     os.makedirs(plot_folder, exist_ok=True)
+
     plot_paths = []
+    plot_summaries = []
 
-    # Continuous column line plots
-    if continuous_cols:
-        n_cols = 3
-        n_rows = math.ceil(len(continuous_cols) / n_cols)
+    for i, rec in enumerate(plot_recommendations):
 
-        fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 4 * n_rows))
+        plot_type = rec.get("plot_type")
+        columns = rec.get("columns", [])
+        title = rec.get("title", "")
 
-        if not hasattr(axes, "flatten"):
-            axes = [axes]
-        else:
-            axes = axes.flatten()
+        if plot_type == "skip":
+            continue
 
-        for i, col in enumerate(continuous_cols):
-            series = numeric_df[col].dropna().reset_index(drop=True)
+        try:
+            plt.figure(figsize=(8, 5))
 
-            axes[i].plot(
-                series.index,
-                series.values,
-                marker="o",
-                linewidth=1
+            summary = {
+                "plot_type": plot_type,
+                "columns": columns,
+                "title": title,
+                "plot_path": None,
+                "alt_text": None,
+                "insights": {}
+            }
+
+            if plot_type == "histogram":
+                col = columns[0]
+                series = df[col].dropna()
+
+                plt.hist(series, bins=30, edgecolor="black")
+                plt.xlabel(col)
+                plt.ylabel("Frequency")
+                plt.title(title or f"Histogram of {col}")
+
+                summary["insights"] = {
+                    "numeric_summary": summarize_numeric_series(series),
+                    "purpose": "Shows distribution, spread, and skewness."
+                }
+
+            elif plot_type == "boxplot":
+                col = columns[0]
+                series = df[col].dropna()
+
+                plt.boxplot(series)
+                plt.ylabel(col)
+                plt.title(title or f"Boxplot of {col}")
+
+                q1 = series.quantile(0.25)
+                q3 = series.quantile(0.75)
+                iqr = q3 - q1
+
+                lower_bound = q1 - 1.5 * iqr
+                upper_bound = q3 + 1.5 * iqr
+
+                outliers = series[
+                    (series < lower_bound) |
+                    (series > upper_bound)
+                ]
+
+                summary["insights"] = {
+                    "numeric_summary": summarize_numeric_series(series),
+                    "q1": round(float(q1), 3),
+                    "q3": round(float(q3), 3),
+                    "iqr": round(float(iqr), 3),
+                    "outlier_count": int(len(outliers)),
+                    "purpose": "Shows spread, median, quartiles, and possible outliers."
+                }
+
+            elif plot_type == "line":
+                col = columns[0]
+                series = df[col].dropna().reset_index(drop=True)
+
+                plt.plot(series.index, series.values, marker="o", linewidth=1)
+                plt.xlabel("Record Index")
+                plt.ylabel(col)
+                plt.title(title or f"Line Plot of {col}")
+
+                summary["insights"] = {
+                    "numeric_summary": summarize_numeric_series(series),
+                    "first_value": round(float(series.iloc[0]), 3) if len(series) > 0 else None,
+                    "last_value": round(float(series.iloc[-1]), 3) if len(series) > 0 else None,
+                    "purpose": "Shows how values change across row order."
+                }
+
+            elif plot_type == "bar":
+                col = columns[0]
+                value_counts = df[col].dropna().value_counts().head(15)
+
+                plt.bar(value_counts.index.astype(str), value_counts.values)
+                plt.xlabel(col)
+                plt.ylabel("Count")
+                plt.xticks(rotation=45, ha="right")
+                plt.title(title or f"Bar Plot of {col}")
+
+                summary["insights"] = {
+                    "top_values": value_counts.to_dict(),
+                    "unique_count": int(df[col].nunique(dropna=True)),
+                    "purpose": "Shows frequency distribution of categories."
+                }
+
+            elif plot_type == "pie":
+                col = columns[0]
+                value_counts = df[col].dropna().value_counts().head(8)
+
+                plt.pie(
+                    value_counts.values,
+                    labels=value_counts.index.astype(str),
+                    autopct="%1.1f%%",
+                    startangle=90
+                )
+
+                plt.title(title or f"Pie Chart of {col}")
+
+                total = value_counts.sum()
+
+                percentages = {
+                    str(k): round((v / total) * 100, 2)
+                    for k, v in value_counts.to_dict().items()
+                }
+
+                summary["insights"] = {
+                    "category_percentages": percentages,
+                    "purpose": "Shows category share as part of a whole."
+                }
+
+            elif plot_type == "scatter":
+                x_col = columns[0]
+                y_col = columns[1]
+
+                plot_df = df[[x_col, y_col]].dropna()
+
+                plt.scatter(
+                    plot_df[x_col],
+                    plot_df[y_col],
+                    alpha=0.7
+                )
+
+                plt.xlabel(x_col)
+                plt.ylabel(y_col)
+                plt.title(title or f"Scatter Plot: {x_col} vs {y_col}")
+
+                correlation = None
+
+                if (
+                    pd.api.types.is_numeric_dtype(plot_df[x_col])
+                    and pd.api.types.is_numeric_dtype(plot_df[y_col])
+                ):
+                    correlation = plot_df[x_col].corr(plot_df[y_col])
+
+                summary["insights"] = {
+                    "x_summary": summarize_numeric_series(plot_df[x_col]),
+                    "y_summary": summarize_numeric_series(plot_df[y_col]),
+                    "correlation": round(float(correlation), 3) if correlation is not None else None,
+                    "purpose": "Shows relationship between two numeric columns."
+                }
+
+            else:
+                plt.close()
+                continue
+
+            plt.tight_layout()
+
+            alt_text = get_alt_text()
+            summary["alt_text"] = alt_text
+
+            file_name = (
+                f"{i + 1}_{plot_type}_"
+                f"{safe_column_name('_'.join(map(str, columns)))}.png"
             )
 
-            axes[i].set_title(f"Line Plot of {col}")
-            axes[i].set_xlabel("Record Index")
-            axes[i].set_ylabel(col)
+            plot_path = os.path.join(plot_folder, file_name)
 
-        # Hide empty subplots
-        for j in range(len(continuous_cols), len(axes)):
-            axes[j].set_visible(False)
+            plt.savefig(plot_path, bbox_inches="tight")
+            plt.close()
 
-        plt.tight_layout()
+            summary["plot_path"] = plot_path
 
-        continuous_plot_path = os.path.join(
-            plot_folder,
-            "continuous_line_plots.png"
-        )
+            plot_paths.append(plot_path)
+            plot_summaries.append(summary)
 
-        plt.savefig(continuous_plot_path, bbox_inches="tight")
-        plt.close()
+        except Exception as e:
+            plt.close()
+            print(f"Failed to generate {plot_type} for {columns}: {e}")
 
-        print(f"Continuous line plots saved at: {continuous_plot_path}")
-        plot_paths.append(continuous_plot_path)
-
-    # Numeric binary column pie charts
-    for col in binary_cols:
-        value_counts = df[col].value_counts()
-
-        plt.figure(figsize=(5, 4))
-        plt.pie(
-            x=value_counts,
-            labels=value_counts.index,
-            autopct='%1.1f%%',
-            startangle=90
-        )
-
-        plt.title(f'Binary Distribution - {col}')
-        plt.tight_layout()
-
-        safe_col_name = (
-            str(col)
-            .replace(" ", "_")
-            .replace("/", "_")
-            .replace("\\", "_")
-        )
-
-        binary_plot_path = os.path.join(
-            plot_folder,
-            f"binary_distribution_{safe_col_name}.png"
-        )
-
-        plt.savefig(binary_plot_path, bbox_inches="tight")
-        plt.close()
-
-        print(f"Binary distribution plot saved at: {binary_plot_path}")
-        plot_paths.append(binary_plot_path)
-
-    # Text/categorical label pie charts
-    for col in categorical_cols:
-        value_counts = df[col].value_counts()
-
-        plt.figure(figsize=(6, 5))
-        plt.pie(
-            x=value_counts,
-            labels=value_counts.index,
-            autopct='%1.1f%%',
-            startangle=90
-        )
-
-        plt.title(f'Categorical Distribution - {col}')
-        plt.tight_layout()
-
-        safe_col_name = (
-            str(col)
-            .replace(" ", "_")
-            .replace("/", "_")
-            .replace("\\", "_")
-        )
-
-        categorical_plot_path = os.path.join(
-            plot_folder,
-            f"categorical_distribution_{safe_col_name}.png"
-        )
-
-        plt.savefig(categorical_plot_path, bbox_inches="tight")
-        plt.close()
-
-        print(f"Categorical distribution plot saved at: {categorical_plot_path}")
-        plot_paths.append(categorical_plot_path)
-
-    return plot_paths
+    return {
+        "plot_paths": plot_paths,
+        "plot_summaries": plot_summaries
+    }

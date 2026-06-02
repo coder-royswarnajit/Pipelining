@@ -1,28 +1,45 @@
 import pandas as pd
 
 
-def detect_skewness(df):
+def detect_skewness(df, type_info=None, target_column=None):
 
     skewness_report = {}
 
-    # Select numeric columns
-    numeric_df = df.select_dtypes(include=['int64', 'float64'])
+    numeric_df = df.select_dtypes(include=["int64", "float64"])
 
     for col in numeric_df.columns:
+
+        if col == target_column:
+            print(f"Skipped target column from skewness: {col}")
+            continue
+
+        detected_type = None
+
+        if type_info is not None:
+            detected_type = type_info.get(col, {}).get(
+                "detected_type",
+                None
+            )
+
+        if detected_type == "identifier":
+            continue
+
+        if detected_type in ["binary", "categorical_numeric"]:
+            continue
+
+        if type_info is not None and detected_type != "continuous":
+            continue
+
         series = numeric_df[col].dropna()
 
-        # Skip empty columns
         if series.empty:
             continue
 
-        # Skip binary columns
         if series.nunique() <= 2:
             continue
 
-        # Calculate skewness
         skew_value = series.skew()
 
-        # Determine skew category
         if abs(skew_value) < 0.5:
             skew_type = "Approximately Symmetric"
 
@@ -32,7 +49,6 @@ def detect_skewness(df):
         else:
             skew_type = "Highly Skewed"
 
-        # Direction
         if skew_value > 0:
             direction = "Right Skewed"
 
@@ -42,8 +58,10 @@ def detect_skewness(df):
         else:
             direction = "Symmetric"
 
-        skewness_report[col] = {"skewness": round(skew_value, 3),
-                                "skew_type": skew_type,
-                                "direction": direction}
+        skewness_report[col] = {
+            "skewness": round(skew_value, 3),
+            "skew_type": skew_type,
+            "direction": direction
+        }
 
     return skewness_report

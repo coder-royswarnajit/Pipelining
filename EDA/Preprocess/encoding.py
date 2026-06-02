@@ -5,52 +5,52 @@ from Profiling.type_detection import detect_column_types
 from Profiling.cardinality import analyze_cardinality
 
 
-def encode_features(df):
+def encode_features(df, target_column=None):
+    """
+    Full-dataset encoding.
+    Use this for EDA/report preprocessing only.
+    Do not use this before model train-test split.
+    """
+
     df = df.copy()
     encoded_df = pd.DataFrame(index=df.index)
-
 
     type_info = detect_column_types(df)
     cardinality_info = analyze_cardinality(df)
 
     for col in df.columns:
 
-        #Drop constant columns
-        if df[col].nunique() <= 1:
-            print(f"Dropped constant column: {col}")
+        if col == target_column:
+            encoded_df[col] = df[col]
+            continue
+
+        if df[col].nunique(dropna=True) <= 1:
             continue
 
         detected_type = type_info[col]["detected_type"]
 
-        # IDENTIFIER COLUMNS
         if detected_type == "identifier":
-            print(f"Dropped identifier column: {col}")
             continue
 
-        # TEXT COLUMNS
         elif detected_type == "text":
-            print(f"Skipped text column: {col}")
             continue
 
-        # BINARY COLUMNS
         elif detected_type == "binary":
             le = LabelEncoder()
             encoded_df[col] = le.fit_transform(df[col].astype(str))
-            print(f"Label Encoding applied on: {col}")
 
-        # STRICT categorical handling (no numeric leakage)
         elif detected_type == "categorical":
 
             cardinality_type = cardinality_info.get(col, {}).get(
-                "cardinality_type", "Low Cardinality"
+                "cardinality_type",
+                "Low Cardinality"
             )
 
-            print(f"{col} → Cardinality: {cardinality_type}")
 
-            # LOW/MODERATE CARDINALITY → OneHot
             if cardinality_type in ["Low Cardinality", "Moderate Cardinality"]:
                 encoder = OneHotEncoder(
-                    sparse_output=False, handle_unknown='ignore'
+                    sparse_output=False,
+                    handle_unknown="ignore"
                 )
 
                 transformed = encoder.fit_transform(df[[col]])
@@ -64,20 +64,115 @@ def encode_features(df):
 
                 encoded_df = pd.concat([encoded_df, transformed_df], axis=1)
 
-                print(f"OneHotEncoder applied on: {col}")
 
-            # HIGH CARDINALITY → Frequency Encoding
             else:
                 freq_map = df[col].value_counts(normalize=True)
                 encoded_df[col] = df[col].map(freq_map)
 
-                print(f"Frequency Encoding applied on: {col}")
 
-        #ALL numeric columns (continuous + categorical_numeric)
         else:
             encoded_df[col] = df[col]
-            print(f"Numeric column retained: {col}")
 
-    print("\nEncoding completed.")
+    return encoded_df
+
+
+
+# LEAKAGE-SAFE MODELLING FUNCTIONS
+
+def fit_encoders(X_train):
+    """
+    Fits encoders only on X_train.
+    """
+
+    encoders = {}
+
+    categorical_cols = X_train.select_dtypes(
+        include=["object", "category", "bool"]
+    ).columns.tolist()
+
+    for col in categorical_cols:
+
+        unique_count = X_train[col].nunique(dropna=True)
+
+        if unique_count <= 1:
+            continue
+
+        if unique_count == 2:
+            encoder = LabelEncoder()
+            encoder.fit(X_train[col].astype(str))
+
+            encoders[col] = {
+                "type": "label",
+                "encoder": encoder
+            }
+
+        else:
+            encoder = OneHotEncoder(
+                sparse_output=False,
+                handle_unknown="ignore"
+            )
+
+            encoder.fit(X_train[[col]])
+
+            encoders[col] = {
+                "type": "onehot",
+                "encoder": encoder,
+                "feature_names": encoder.get_feature_names_out([col])
+            }
+
+    return encoders
+
+
+def transform_encoding(X, encoders):
+    """
+    Applies fitted encoders to X_train or X_test.
+    """
+
+    X = X.copy()
+
+    encoded_df = X.drop(
+        columns=list(encoders.keys()),
+        errors="ignore"
+    )
+
+    for col, encoder_info in encoders.items():
+
+        if col not in X.columns:
+            continue
+
+        if encoder_info["type"] == "label":
+
+            encoder = encoder_info["encoder"]
+
+            values = X[col].astype(str)
+
+            known_classes = set(encoder.classes_)
+
+            values = values.apply(
+                lambda value: value if value in known_classes else "Unknown"
+            )
+
+            if "Unknown" not in encoder.classes_:
+                encoder.classes_ = list(encoder.classes_) + ["Unknown"]
+
+            encoded_df[col] = encoder.transform(values)
+
+        elif encoder_info["type"] == "onehot":
+
+            encoder = encoder_info["encoder"]
+            feature_names = encoder_info["feature_names"]
+
+            transformed = encoder.transform(X[[col]])
+
+            transformed_df = pd.DataFrame(
+                transformed,
+                columns=feature_names,
+                index=X.index
+            )
+
+            encoded_df = pd.concat(
+                [encoded_df, transformed_df],
+                axis=1
+            )
 
     return encoded_df

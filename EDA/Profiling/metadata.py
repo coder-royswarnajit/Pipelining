@@ -55,6 +55,5 @@ def build_metadata(df):
             metadata[col]["cardinality_type"] = (None)
             metadata[col]["unique_ratio"] = (None)
 
-    print("\nMetadata generation completed.")
 
     return metadata

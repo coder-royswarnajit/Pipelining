@@ -1,11 +1,12 @@
 import os
 import sys
 
-# Make sure EDA folder imports work
+
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 if CURRENT_DIR not in sys.path:
     sys.path.append(CURRENT_DIR)
+
 
 from Profiling.profiling_pipeline import run_eda_pipeline
 from Preprocess.preprocess_pipeline import run_preprocessing_pipeline
@@ -19,7 +20,7 @@ def create_metadata_from_eda_results(df, eda_results):
 
     metadata = {}
 
-    column_types = eda_results.get("column_types", {})
+    column_types = eda_results.get("column_info", {})
     missing_report = eda_results.get("missing_report", {})
     outlier_report = eda_results.get("outlier_report", {})
     skewness_report = eda_results.get("skewness_report", {})
@@ -43,6 +44,7 @@ def create_metadata_from_eda_results(df, eda_results):
                 "detected_type",
                 "unknown"
             )
+
         else:
             metadata[col]["detected_type"] = "unknown"
 
@@ -61,9 +63,15 @@ def create_metadata_from_eda_results(df, eda_results):
     return metadata
 
 
-def run_eda_workflow(df, save_plots=False, plot_folder="eda_plots"):
+def run_eda_workflow(
+    df,
+    save_plots=False,
+    plot_folder="eda_plots",
+    target_column=None,
+    run_preprocessing=True
+):
     """
-    Runs profiling and preprocessing.
+    Runs profiling and optional full-dataset preprocessing.
 
     It does NOT:
     - load CSV
@@ -74,24 +82,25 @@ def run_eda_workflow(df, save_plots=False, plot_folder="eda_plots"):
     It only returns results to app.py.
     """
 
-    print("\nRunning profiling pipeline...")
-
     eda_results = run_eda_pipeline(
         df,
         save_plots=save_plots,
-        plot_folder=plot_folder
+        plot_folder=plot_folder,
+        target_column=target_column
     )
-
-    print("\nCreating metadata from EDA results...")
 
     metadata = create_metadata_from_eda_results(
         df=df,
         eda_results=eda_results
     )
 
-    print("\nRunning preprocessing pipeline...")
+    preprocessed_df = None
 
-    preprocessed_df = run_preprocessing_pipeline(df)
+    if run_preprocessing:
+        preprocessed_df = run_preprocessing_pipeline(
+            df,
+            target_column=target_column
+        )
 
     final_results = {
         "eda_results": eda_results,

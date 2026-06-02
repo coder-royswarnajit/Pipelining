@@ -1,21 +1,43 @@
 import pandas as pd
 
 
-def detect_outliers(df):
+def detect_outliers(df, type_info=None):
 
     outlier_report = {}
 
     # Select only numeric columns
-    numeric_df = df.select_dtypes(include=['int64', 'float64'])
+    numeric_df = df.select_dtypes(include=["int64", "float64"])
 
     for col in numeric_df.columns:
+
+        detected_type = None
+
+        if type_info is not None:
+            detected_type = type_info.get(col, {}).get(
+                "detected_type",
+                None
+            )
+
+        # Skip identifier columns
+        if detected_type == "identifier":
+            print(f"Skipped identifier column from outlier detection: {col}")
+            continue
+
+        # Skip binary and categorical numeric columns
+        if detected_type in ["binary", "categorical_numeric"]:
+            continue
+
+        # If type_info is provided, only allow continuous columns
+        if type_info is not None and detected_type != "continuous":
+            continue
+
         series = numeric_df[col].dropna()
 
         # Skip empty columns
         if series.empty:
             continue
 
-        # Skip binary columns
+        # Fallback skip binary columns
         if series.nunique() <= 2:
             continue
 
@@ -32,11 +54,17 @@ def detect_outliers(df):
         lower_bound = Q1 - (1.5 * IQR)
         upper_bound = Q3 + (1.5 * IQR)
 
-        outliers = series[(series < lower_bound) | (series > upper_bound)]
+        outliers = series[
+            (series < lower_bound) |
+            (series > upper_bound)
+        ]
 
         outlier_count = len(outliers)
 
-        outlier_percent = round((outlier_count / len(series)) * 100, 2)
+        outlier_percent = round(
+            (outlier_count / len(series)) * 100,
+            2
+        )
 
         outlier_report[col] = {
             "outlier_count": int(outlier_count),

@@ -9,3 +9,4 @@ python-dotenv
 scipy
 joblib
 streamlit
+matplotalt
