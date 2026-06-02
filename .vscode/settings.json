@@ -1,0 +1,7 @@
+{
+    "python.analysis.extraPaths": [
+        "./EDA",
+        "./AI_Brain",
+        "./Modelling"
+    ]
+}
