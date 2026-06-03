@@ -32,8 +32,8 @@ def handle_missing_values(df):
             continue
 
         if detected_type == "continuous":
-
             skewness = 0
+            
             if col in skew_info:
                 skewness = skew_info[col]["skewness"]
 
@@ -47,21 +47,12 @@ def handle_missing_values(df):
                 df[[col]] = imputer.fit_transform(df[[col]])
                 
 
-        elif detected_type in [
-            "binary",
-            "categorical",
-            "categorical_numeric"
-        ]:
-
+        elif detected_type in ["binary", "categorical", "categorical_numeric"]:
             imputer = SimpleImputer(strategy="most_frequent")
             df[[col]] = imputer.fit_transform(df[[col]])
 
         elif detected_type == "text":
-
-            imputer = SimpleImputer(
-                strategy="constant",
-                fill_value="Unknown"
-            )
+            imputer = SimpleImputer(strategy="constant", fill_value="Unknown")
             df[[col]] = imputer.fit_transform(df[[col]])
 
         elif detected_type == "identifier":
@@ -77,7 +68,6 @@ def handle_missing_values(df):
     return df
 
 
-# LEAKAGE-SAFE MODELLING FUNCTIONS
 def fit_missing_imputers(X_train):
     """
     Fits missing value imputers only on X_train.

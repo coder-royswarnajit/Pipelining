@@ -26,19 +26,13 @@ def run_preprocessing_pipeline(df, target_column=None, outliers=True, missing=Tr
         pass
     
     if outliers:
-        df = handle_outliers(
-            df,
-            target_column=target_column
-        )
+        df = handle_outliers(df, target_column=target_column)
 
     if missing:
         df = handle_missing_values(df)
 
     if encoding:
-        df = encode_features(
-            df,
-            target_column=target_column
-        )
+        df = encode_features(df, target_column=target_column)
 
 
     return df
@@ -75,10 +69,7 @@ def preprocess_train_test_for_model(X_train, X_test, outliers=True, missing=True
         X_test = transform_encoding(X_test, encoders)
 
         # Important after one-hot encoding
-        X_test = X_test.reindex(
-            columns=X_train.columns,
-            fill_value=0
-        )
+        X_test = X_test.reindex(columns=X_train.columns, fill_value=0)
 
     if scaling:
         scaler, numeric_cols = fit_scaler(X_train)

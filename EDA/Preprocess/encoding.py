@@ -40,27 +40,13 @@ def encode_features(df, target_column=None):
             encoded_df[col] = le.fit_transform(df[col].astype(str))
 
         elif detected_type == "categorical":
-
-            cardinality_type = cardinality_info.get(col, {}).get(
-                "cardinality_type",
-                "Low Cardinality"
-            )
-
+            cardinality_type = cardinality_info.get(col, {}).get("cardinality_type", "Low Cardinality")
 
             if cardinality_type in ["Low Cardinality", "Moderate Cardinality"]:
-                encoder = OneHotEncoder(
-                    sparse_output=False,
-                    handle_unknown="ignore"
-                )
-
+                encoder = OneHotEncoder(sparse_output=False, handle_unknown="ignore")
                 transformed = encoder.fit_transform(df[[col]])
                 feature_names = encoder.get_feature_names_out([col])
-
-                transformed_df = pd.DataFrame(
-                    transformed,
-                    columns=feature_names,
-                    index=df.index
-                )
+                transformed_df = pd.DataFrame(transformed, columns=feature_names, index=df.index)
 
                 encoded_df = pd.concat([encoded_df, transformed_df], axis=1)
 
@@ -77,21 +63,15 @@ def encode_features(df, target_column=None):
 
 
 
-# LEAKAGE-SAFE MODELLING FUNCTIONS
-
 def fit_encoders(X_train):
     """
     Fits encoders only on X_train.
     """
 
     encoders = {}
-
-    categorical_cols = X_train.select_dtypes(
-        include=["object", "category", "bool"]
-    ).columns.tolist()
+    categorical_cols = X_train.select_dtypes(include=["object", "category", "bool"]).columns.tolist()
 
     for col in categorical_cols:
-
         unique_count = X_train[col].nunique(dropna=True)
 
         if unique_count <= 1:
@@ -100,25 +80,12 @@ def fit_encoders(X_train):
         if unique_count == 2:
             encoder = LabelEncoder()
             encoder.fit(X_train[col].astype(str))
-
-            encoders[col] = {
-                "type": "label",
-                "encoder": encoder
-            }
+            encoders[col] = {"type": "label", "encoder": encoder}
 
         else:
-            encoder = OneHotEncoder(
-                sparse_output=False,
-                handle_unknown="ignore"
-            )
-
+            encoder = OneHotEncoder(sparse_output=False, handle_unknown="ignore")
             encoder.fit(X_train[[col]])
-
-            encoders[col] = {
-                "type": "onehot",
-                "encoder": encoder,
-                "feature_names": encoder.get_feature_names_out([col])
-            }
+            encoders[col] = {"type": "onehot", "encoder": encoder, "feature_names": encoder.get_feature_names_out([col])}
 
     return encoders
 
@@ -130,27 +97,17 @@ def transform_encoding(X, encoders):
 
     X = X.copy()
 
-    encoded_df = X.drop(
-        columns=list(encoders.keys()),
-        errors="ignore"
-    )
+    encoded_df = X.drop(columns=list(encoders.keys()), errors="ignore")
 
     for col, encoder_info in encoders.items():
-
         if col not in X.columns:
             continue
 
         if encoder_info["type"] == "label":
-
             encoder = encoder_info["encoder"]
-
             values = X[col].astype(str)
-
             known_classes = set(encoder.classes_)
-
-            values = values.apply(
-                lambda value: value if value in known_classes else "Unknown"
-            )
+            values = values.apply(lambda value: value if value in known_classes else "Unknown")
 
             if "Unknown" not in encoder.classes_:
                 encoder.classes_ = list(encoder.classes_) + ["Unknown"]
@@ -158,21 +115,10 @@ def transform_encoding(X, encoders):
             encoded_df[col] = encoder.transform(values)
 
         elif encoder_info["type"] == "onehot":
-
             encoder = encoder_info["encoder"]
             feature_names = encoder_info["feature_names"]
-
             transformed = encoder.transform(X[[col]])
-
-            transformed_df = pd.DataFrame(
-                transformed,
-                columns=feature_names,
-                index=X.index
-            )
-
-            encoded_df = pd.concat(
-                [encoded_df, transformed_df],
-                axis=1
-            )
+            transformed_df = pd.DataFrame(transformed, columns=feature_names, index=X.index)
+            encoded_df = pd.concat([encoded_df, transformed_df], axis=1)
 
     return encoded_df
