@@ -1,12 +1,5 @@
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import precision_score
-from sklearn.metrics import recall_score
-from sklearn.metrics import f1_score
-from sklearn.metrics import classification_report
-
-from sklearn.metrics import mean_absolute_error
-from sklearn.metrics import mean_squared_error
-from sklearn.metrics import r2_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 
 def evaluate_classification_model(y_test, y_pred):
@@ -16,10 +9,10 @@ def evaluate_classification_model(y_test, y_pred):
     """
 
     results = {"accuracy": round(accuracy_score(y_test, y_pred), 4), 
-               "precision": round(precision_score(y_test, y_pred, average="weighted", zero_division=0), 4),
-               "recall": round(recall_score(y_test, y_pred, average="weighted", zero_division=0), 4),
-               "f1_score": round(f1_score(y_test, y_pred, average="weighted", zero_division=0), 4),
-               "classification_report": classification_report(y_test, y_pred, zero_division=0)}
+               "precision": round(precision_score(y_test, y_pred, average="weighted"), 4),
+               "recall": round(recall_score(y_test, y_pred, average="weighted"), 4),
+               "f1_score": round(f1_score(y_test, y_pred, average="weighted"), 4),
+               "confusion_matrix": confusion_matrix(y_test, y_pred).tolist()}
 
     return results
 

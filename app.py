@@ -161,7 +161,7 @@ def display_eda_report(eda_results):
 
     for key, value in eda_results.items():
 
-        if key == "plot_paths":
+        if key in ["plot_paths", "metadata","plot_recommendations"]:
             continue
 
         section_title = key.replace("_", " ").title()
@@ -492,12 +492,8 @@ def main():
 
         display_eda_report(eda_results)
 
-        st.subheader("AI Brain Output")
-        st.write(ai_results)
+        
 
-        if "eda_explanation" in eda_results:
-            st.subheader("AI EDA Explanation")
-            st.write(eda_results["eda_explanation"])
 
         if target_column is not None and problem_type is not None:
             st.subheader("Detected ML Setup")
@@ -522,13 +518,7 @@ def main():
 
         display_eda_report(st.session_state["eda_results"])
 
-        if "ai_results" in st.session_state:
-            st.subheader("Previous AI Brain Output")
-            st.write(st.session_state["ai_results"])
 
-        if "eda_explanation" in st.session_state["eda_results"]:
-            st.subheader("AI EDA Explanation")
-            st.write(st.session_state["eda_results"]["eda_explanation"])
 
         if (
             "target_column" in st.session_state

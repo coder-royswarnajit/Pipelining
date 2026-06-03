@@ -217,76 +217,69 @@ Return only in this exact format:
 
 def eda_explanation_prompt(eda_summary, target_column=None, problem_type=None):
     return f"""
-You are an expert Data Analyst and Machine Learning Engineer.
+        You are an expert Data Analyst and Machine Learning Engineer.
 
-Your task is to explain the EDA results in simple, clear language.
+        Your task is to explain the EDA results in simple, clear language.
 
-The explanation should be useful for:
-- a data science intern
-- a mentor reviewing the project
-- a business user who wants to understand the dataset
+        The explanation should be useful for:
+        - a data science intern
+        - a mentor reviewing the project
+        - a business user who wants to understand the dataset
 
-Do not write code.
-Do not mention that you are an AI.
-Do not over-explain basic definitions.
+        Do not write code.
+        Do not mention that you are an AI.
+        Do not over-explain basic definitions.
 
-Focus on:
-1. Dataset overview
-2. Missing values
-3. Column types
-4. Skewness interpretation
-5. Outlier interpretation
-6. Cardinality interpretation
-7. Graph/plot interpretation
-8. Impact on modelling
-9. Recommended next steps
+        Focus on:
+        1. Dataset overview
+        2. Missing values
+        3. Column types
+        4. Skewness interpretation
+        5. Outlier interpretation
+        6. Cardinality interpretation
+        7. Graph/plot interpretation
 
-Important rules:
-- If skewness report is empty, say that no major skewness analysis was available or no valid continuous columns were found.
-- If outlier report is empty, say that no significant outlier information was found.
-- If cardinality report has identifier-like columns, mention that such columns should usually be removed before modelling.
-- If target column is available, explain how EDA relates to that target.
-- If problem type is available, explain what the EDA suggests for that ML task.
-- Keep the explanation practical and project-focused.
-- Use short headings.
-- Use bullet points where useful.
-- Keep it concise but informative.
+        Important rules:
+        - If skewness report is empty, say that no major skewness analysis was available or no valid continuous columns were found.
+        - If outlier report is empty, say that no significant outlier information was found.
+        - If cardinality report has identifier-like columns, mention that such columns should usually be removed before modelling.
+        - If target column is available, explain how EDA relates to that target.
+        - If problem type is available, explain what the EDA suggests for that ML task.
+        - Keep the explanation practical and project-focused.
+        - Use short headings.
+        - Use bullet points where useful.
+        - Keep it concise but informative.
 
-EDA Results:
-{eda_summary}
+        EDA Results:
+        {eda_summary}
 
-Target Column:
-{target_column}
+        Target Column:
+        {target_column}
 
-Problem Type:
-{problem_type}
+        Problem Type:
+        {problem_type}
 
-Return the explanation in this format:
+        Return the explanation in this format:
 
-Dataset Overview:
-...
+        Dataset Overview:
+        ...
 
-Missing Values:
-...
+        Missing Values:
+        ...
 
-Column Type Insights:
-...
+        Column Type Insights:
+        ...
 
-Skewness Insights:
-...
+        Skewness Insights:
+        ...
 
-Outlier Insights:
-...
+        Outlier Insights:
+        ...
 
-Cardinality Insights:
-...
+        Cardinality Insights:
+        ...
 
-Graph Insights:
-...
+        Graph Insights:
+        ...
 
-Modelling Impact:
-...
-
-Recommended Next Steps:
-...
-"""
+        """
