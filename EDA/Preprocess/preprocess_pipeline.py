@@ -76,5 +76,15 @@ def preprocess_train_test_for_model(X_train, X_test, outliers=True, missing=True
 
         X_train = transform_scaling(X_train, scaler, numeric_cols)
         X_test = transform_scaling(X_test, scaler, numeric_cols)
+        
 
+    train_nan_cols = X_train.columns[X_train.isnull().any()].tolist()
+    test_nan_cols = X_test.columns[X_test.isnull().any()].tolist()
+
+    if train_nan_cols:
+        raise ValueError(f"NaN values remain in X_train columns: {train_nan_cols}")
+
+    if test_nan_cols:
+        raise ValueError(f"NaN values remain in X_test columns: {test_nan_cols}")
+        
     return X_train, X_test

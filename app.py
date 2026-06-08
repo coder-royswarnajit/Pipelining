@@ -1,8 +1,14 @@
 import os
 import sys
 import re
+from unittest import result
 import pandas as pd
 import streamlit as st
+import io
+import joblib
+import matplotlib.pyplot as plt
+import numpy as np
+import shap
 
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -22,6 +28,7 @@ from Profiling.correlation import correlation_heatmap
 from AI_Brain.brain_pipeline import run_ai_brain_pipeline
 
 from Modelling.model_pipeline import run_model_pipeline
+from Modelling.shap_explainer import generate_shap_explanation
 
 
 def load_uploaded_dataset(uploaded_file):
@@ -337,17 +344,11 @@ def generate_eda_html_report(eda_results):
 
 def main():
 
-    st.set_page_config(
-        page_title="AutoML EDA + Modelling",
-        layout="wide"
-    )
+    st.set_page_config(page_title="Auto EDA + Modelling", layout="wide")
 
     st.title("Auto EDA Analysis")
 
-    uploaded_file = st.file_uploader(
-        "Upload your dataset",
-        type=["csv", "xlsx"]
-    )
+    uploaded_file = st.file_uploader("Upload your dataset", type=["csv", "xlsx"])
 
     if uploaded_file is None:
         st.info("Upload a CSV or Excel dataset to start.")
@@ -377,19 +378,12 @@ def main():
     button_col1, button_col2 = st.columns(2)
 
     with button_col1:
-        run_eda_analysis = st.button(
-            "Run EDA Analysis",
-            use_container_width=True
-        )
+        run_eda_analysis = st.button("Run EDA Analysis", use_container_width=True)
 
     with button_col2:
-        run_model = st.button(
-            "Run Modelling",
-            use_container_width=True
-        )
+        run_model = st.button("Run Modelling", use_container_width=True)
 
     if run_eda_analysis:
-
         with st.spinner("Running EDA pipeline..."):
             eda_results = run_eda_pipeline(
                 df,
@@ -598,11 +592,7 @@ def main():
         )
 
         with st.spinner("Running modelling pipeline..."):
-            model_results = run_model_pipeline(
-                df=df,
-                target_column=target_column,
-                problem_type=problem_type
-            )
+            model_results = run_model_pipeline(df=df, target_column=target_column, problem_type=problem_type)
 
         st.session_state["model_results"] = model_results
 
@@ -610,10 +600,144 @@ def main():
 
         st.subheader("Modelling Results")
 
-        for model_name, result in model_results.items():
+        for model_name, result in model_results.items():            
             with st.expander(model_name):
-                st.write(result)
+
+                display_result = {k: v for k, v in result.items() if k not in ["model", "actual_values", "predicted_values","confusion_matrix", "feature_importance", "coefficients" ]}
+                st.write(display_result)
+
+                #Classification
+                if (result.get("status") == "success" and "confusion_matrix" in result):
+                    st.subheader("Confusion Matrix")
+                    cm_df = pd.DataFrame(result["confusion_matrix"])
+                    st.dataframe(cm_df)
+                
+                # Feature Importance (Tree Models)
+                if (result.get("status") == "success" and result.get("feature_importance")):
+                    st.subheader("Feature Importance")
+                    
+                    importance_df = pd.DataFrame({"Feature": list(result["feature_importance"].keys()), 
+                                                  "Importance": list(result["feature_importance"].values() )})
+                    importance_df = (importance_df.sort_values("Importance", ascending=False))
+                    
+                    st.dataframe(importance_df, use_container_width=True)
+                
+                # Coefficients (Linear / Logistic)
+                if (result.get("status") == "success" and result.get("coefficients")):
+                    st.subheader("Feature Coefficients")
+                    
+                    coef_df = pd.DataFrame({"Feature": list(result["coefficients"].keys()), 
+                                            "Coefficient": list(result["coefficients"].values())})
+                    coef_df = (coef_df.sort_values("Coefficient", ascending=False))
+                    
+                    st.dataframe(coef_df, use_container_width=True)
+                
+                # Regression Error Histogram
+                if (result.get("status") == "success" and "actual_values" in result and "predicted_values" in result):
+                    st.subheader("Prediction Error Distribution")
+
+                    actual = np.array(result["actual_values"])
+                    predicted = np.array(result["predicted_values"])
+
+                    errors = actual - predicted
+
+                    fig, ax = plt.subplots(figsize=(8, 4))
+
+                    ax.hist(errors, bins=20)
+
+                    ax.axvline(0,linestyle="--")
+                    ax.set_title("Prediction Error Distribution")
+                    ax.set_xlabel("Error (Actual - Predicted)")
+                    ax.set_ylabel("Frequency")
+                    
+                    st.pyplot(fig)
+                    st.caption("Values near 0 indicate accurate predictions. "
+                        "Positive errors indicate underprediction. "
+                        "Negative errors indicate overprediction.")
+                
+                
+                col1, col2 = st.columns(2)
+
+                with col1:
+
+                    if (
+                        result.get("status") == "success"
+                        and "model" in result
+                    ):
+
+                        buffer = io.BytesIO()
+
+                        joblib.dump(
+                            result["model"],
+                            buffer
+                        )
+
+                        st.download_button(
+                            label="Download Model",
+                            data=buffer.getvalue(),
+                            file_name=(
+                                model_name
+                                .replace(" ", "_")
+                                .lower()
+                                + ".pkl"
+                            ),
+                            mime="application/octet-stream",
+                            key=f"download_{model_name}"
+                        )
 
 
+            with col2:
+
+                if (
+                    result.get("status") == "success"
+                    and "model" in result
+                    and "X_train" in result
+                ):
+
+                    if st.button(
+                        "Generate SHAP",
+                        key=f"shap_{model_name}"
+                    ):
+
+                        with st.spinner(
+                            "Generating SHAP explanation..."
+                        ):
+
+                            shap_result = (
+                                generate_shap_explanation(
+                                    model=result["model"],
+                                    X_train=result["X_train"],
+                                    X_sample=result["X_train"]
+                                )
+                            )
+
+                        if shap_result["status"] == "success":
+
+                            st.success(
+                                "SHAP explanation generated."
+                            )
+
+                            plt.figure(
+                                figsize=(10, 6)
+                            )
+
+                            shap.summary_plot(
+                                shap_result["shap_values"],
+                                result["X_train"],
+                                show=False
+                            )
+
+                            st.pyplot(
+                                plt.gcf()
+                            )
+
+                            plt.close()
+
+                        else:
+
+                            st.error(
+                                shap_result["error"]
+                            )
+                        
 if __name__ == "__main__":
     main()

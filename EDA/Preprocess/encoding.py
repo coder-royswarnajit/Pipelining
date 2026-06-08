@@ -107,11 +107,7 @@ def transform_encoding(X, encoders):
             encoder = encoder_info["encoder"]
             values = X[col].astype(str)
             known_classes = set(encoder.classes_)
-            values = values.apply(lambda value: value if value in known_classes else "Unknown")
-
-            if "Unknown" not in encoder.classes_:
-                encoder.classes_ = list(encoder.classes_) + ["Unknown"]
-
+            values = values.apply(lambda value: value if value in known_classes else encoder.classes_[0]) #This maps unseen categories to an existing class instead of trying to mutate the encoder.
             encoded_df[col] = encoder.transform(values)
 
         elif encoder_info["type"] == "onehot":
@@ -121,4 +117,7 @@ def transform_encoding(X, encoders):
             transformed_df = pd.DataFrame(transformed, columns=feature_names, index=X.index)
             encoded_df = pd.concat([encoded_df, transformed_df], axis=1)
 
+    if encoded_df.isnull().sum().sum() > 0:
+        raise ValueError(f"NaNs introduced during encoding: {encoded_df.columns[encoded_df.isnull().any()].tolist()}")
+        
     return encoded_df

@@ -74,34 +74,29 @@ def fit_missing_imputers(X_train):
     """
 
     imputers = {}
-
     for col in X_train.columns:
+        if X_train[col].dropna().empty:
 
-        missing_count = X_train[col].isnull().sum()
+            if pd.api.types.is_numeric_dtype(X_train[col]):
+                imputer = SimpleImputer(strategy="constant", fill_value=0)
 
-        def fit_missing_imputers(X_train):  
-            imputers = {}
+            else:
+                imputer = SimpleImputer(strategy="constant", fill_value="Unknown")
 
-            for col in X_train.columns:
-                if pd.api.types.is_numeric_dtype(X_train[col]):
-                    imputer = SimpleImputer(strategy="median")
-
-                else:
-                    imputer = SimpleImputer(strategy="most_frequent")
-
-                imputer.fit(X_train[[col]])
-                imputers[col] = imputer
-
-            return imputers
-
-        if pd.api.types.is_numeric_dtype(X_train[col]):
-            imputer = SimpleImputer(strategy="median")
         else:
-            imputer = SimpleImputer(strategy="most_frequent")
 
-        imputer.fit(X_train[[col]])
+            if pd.api.types.is_numeric_dtype(X_train[col]):
+                imputer = SimpleImputer(strategy="median")
 
-        imputers[col] = imputer
+            else:
+                imputer = SimpleImputer(strategy="most_frequent")
+
+        try:
+            imputer.fit(X_train[[col]])
+            imputers[col] = imputer
+
+        except Exception:
+            pass
 
     return imputers
 

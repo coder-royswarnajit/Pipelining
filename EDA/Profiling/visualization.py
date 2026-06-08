@@ -31,7 +31,9 @@ def get_alt_text():
         return "Alt text not available because matplotalt is not installed."
 
     try:
-        return maa.generate_alt_text(plt.gcf())
+        s=maa.generate_alt_text(plt.gcf())
+        print(s)
+        return s
 
     except Exception as e:
         return f"Alt text generation failed: {str(e)}"
