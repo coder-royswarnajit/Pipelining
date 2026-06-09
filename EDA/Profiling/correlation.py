@@ -2,11 +2,6 @@ import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-try:
-    import matplotalt as maa
-except Exception:
-    maa = None
-
 
 def normalize_detected_type(value):
     if value is None:
@@ -22,14 +17,8 @@ def normalize_detected_type(value):
 
 
 def get_alt_text():
-    if maa is None:
-        return "Alt text not available because matplotalt is not installed."
-
-    try:
-        return maa.generate_alt_text(plt.gcf())
-
-    except Exception as e:
-        return f"Alt text generation failed: {str(e)}"
+    # matplotalt removed — alt text generation disabled
+    return None
 
 
 def get_detected_type(type_info, col):
@@ -214,9 +203,6 @@ def correlation_heatmap(
 
     plt.title("Correlation Heatmap")
     plt.tight_layout()
-
-    alt_text = get_alt_text()
-    
 
     heatmap_path = os.path.join(
         plot_folder,

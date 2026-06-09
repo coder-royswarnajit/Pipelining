@@ -2,11 +2,6 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 
-try:
-    import matplotalt as maa
-except Exception:
-    maa = None
-
 
 def safe_column_name(col):
     return (
@@ -19,24 +14,6 @@ def safe_column_name(col):
         .replace("(", "")
         .replace(")", "")
     )
-
-
-def get_alt_text():
-    """
-    Generates alt text for the current matplotlib figure.
-    Falls back safely if matplotalt is not available.
-    """
-
-    if maa is None:
-        return "Alt text not available because matplotalt is not installed."
-
-    try:
-        s=maa.generate_alt_text(plt.gcf())
-        print(s)
-        return s
-
-    except Exception as e:
-        return f"Alt text generation failed: {str(e)}"
 
 
 def summarize_numeric_series(series):
@@ -237,9 +214,8 @@ def generate_ai_recommended_plots(
 
             plt.tight_layout()
 
-            alt_text = get_alt_text()
-            
-
+            # alt text generation removed (matplotalt not used)
+ 
             file_name = (
                 f"{i + 1}_{plot_type}_"
                 f"{safe_column_name('_'.join(map(str, columns)))}.png"
