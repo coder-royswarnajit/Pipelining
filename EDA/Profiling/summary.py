@@ -4,9 +4,6 @@ def dataset_summary(df):
         "Columns": int(df.shape[1]),
         "Missing Cells": int(df.isnull().sum().sum()),
         "Duplicate Rows": int(df.duplicated().sum()),
-        "Memory Usage (KB)": float(
-            df.memory_usage(deep=True).sum() / 1024
-        )
-    }
+        }
 
     return summary

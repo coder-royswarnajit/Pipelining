@@ -4,25 +4,27 @@ from AI_Brain.llm_client import ask_llm
 from AI_Brain.prompt_templates import plot_recommendation_prompt
 
 
-ALLOWED_PLOTS = {
-    "histogram",
-    "boxplot",
-    "line",
-    "bar",
-    "pie",
-    "scatter",
-    "skip"
-}
+ALLOWED_PLOTS = {"histogram", "boxplot", "line", "bar", "pie", "scatter", "skip"}
 
 
 def parse_plot_recommendations(response):
+    '''
+    This function takes the raw LLM response and tries to convert it into a Python list.
+
+Example input:
+
+"```json\n[{'plot_type': 'histogram', 'columns': ['Age'], 'title': 'Age Plot'}]\n```"
+
+Expected output:
+
+[{'plot_type': 'histogram', 'columns': ['Age'], 'title': 'Age Plot'}]
+    '''
     cleaned_response = (
         response
         .replace("```python", "")
         .replace("```json", "")
         .replace("```", "")
-        .strip()
-    )
+        .strip())
 
     try:
         parsed = ast.literal_eval(cleaned_response)

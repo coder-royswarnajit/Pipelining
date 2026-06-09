@@ -13,10 +13,7 @@ def detect_outliers(df, type_info=None):
         detected_type = None
 
         if type_info is not None:
-            detected_type = type_info.get(col, {}).get(
-                "detected_type",
-                None
-            )
+            detected_type = type_info.get(col, {}).get("detected_type", None)
 
         # Skip identifier columns
         if detected_type == "identifier":
@@ -54,17 +51,12 @@ def detect_outliers(df, type_info=None):
         lower_bound = Q1 - (1.5 * IQR)
         upper_bound = Q3 + (1.5 * IQR)
 
-        outliers = series[
-            (series < lower_bound) |
-            (series > upper_bound)
-        ]
+        outliers = series[(series < lower_bound) | (series > upper_bound)]
 
         outlier_count = len(outliers)
 
         outlier_percent = round(
-            (outlier_count / len(series)) * 100,
-            2
-        )
+            (outlier_count / len(series)) * 100, 2)
 
         outlier_report[col] = {
             "outlier_count": int(outlier_count),

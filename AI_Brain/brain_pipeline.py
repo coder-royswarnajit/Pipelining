@@ -14,14 +14,8 @@ def extract_target_from_analysis(target_column_analysis):
     text = str(target_column_analysis).replace("\\n", "\n")
 
     if "Best Target Column:" in text:
-        target_column = (
-            text
-            .split("Best Target Column:")[-1]
-            .strip()
-            .split("\n")[0]
-            .strip()
-        )
-
+        target_column = (text.split("Best Target Column:")[-1].strip().split("\n")[0].strip())
+        
         return target_column
 
     return None
@@ -43,14 +37,7 @@ def extract_problem_type_from_analysis(problem_type_analysis):
     return None
 
 
-def run_ai_brain_pipeline(
-    metadata,
-    df,
-    eda_results=None,
-    run_plot_recommendation=True,
-    run_eda_explanation=True,
-    plot_summaries=None
-):
+def run_ai_brain_pipeline(metadata, df, eda_results=None, run_plot_recommendation=True, run_eda_explanation=True, plot_summaries=None):
     """
     Runs AI analysis using EDA metadata and first 5 rows of dataset.
 
@@ -63,29 +50,13 @@ def run_ai_brain_pipeline(
 
     sample_rows = df.head(5).to_dict(orient="records")
 
-    target_column_analysis = analyze_target_columns(
-        metadata=metadata,
-        sample_rows=sample_rows
-    )
+    target_column_analysis = analyze_target_columns(metadata=metadata, sample_rows=sample_rows)
+    problem_type_analysis = analyze_problem_type(metadata=metadata, sample_rows=sample_rows, target_column=target_column_analysis)
 
-    problem_type_analysis = analyze_problem_type(
-        metadata=metadata,
-        sample_rows=sample_rows,
-        target_column=target_column_analysis
-    )
+    ai_results = {"target_column_analysis": target_column_analysis, "problem_type_analysis": problem_type_analysis}
 
-    ai_results = {
-        "target_column_analysis": target_column_analysis,
-        "problem_type_analysis": problem_type_analysis
-    }
-
-    target_column = extract_target_from_analysis(
-        target_column_analysis
-    )
-
-    problem_type = extract_problem_type_from_analysis(
-        problem_type_analysis
-    )
+    target_column = extract_target_from_analysis(target_column_analysis)
+    problem_type = extract_problem_type_from_analysis(problem_type_analysis)
 
     if run_plot_recommendation:
         plot_recommendations = recommend_plots(

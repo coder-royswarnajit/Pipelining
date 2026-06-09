@@ -237,7 +237,6 @@ def eda_explanation_prompt(eda_summary, target_column=None, problem_type=None):
         4. Skewness interpretation
         5. Outlier interpretation
         6. Cardinality interpretation
-        7. Graph/plot interpretation
 
         Important rules:
         - If skewness report is empty, say that no major skewness analysis was available or no valid continuous columns were found.
@@ -277,9 +276,6 @@ def eda_explanation_prompt(eda_summary, target_column=None, problem_type=None):
         ...
 
         Cardinality Insights:
-        ...
-
-        Graph Insights:
         ...
 
         """

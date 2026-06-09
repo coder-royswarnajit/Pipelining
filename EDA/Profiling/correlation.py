@@ -165,7 +165,6 @@ def correlation_heatmap(
         "excluded_columns": excluded_columns,
         "strong_correlations": [],
         "plot_path": None,
-        "alt_text": None,
         "purpose": "Shows linear correlation between continuous numeric input features."
     }
 
@@ -217,7 +216,7 @@ def correlation_heatmap(
     plt.tight_layout()
 
     alt_text = get_alt_text()
-    summary["alt_text"] = alt_text
+    
 
     heatmap_path = os.path.join(
         plot_folder,

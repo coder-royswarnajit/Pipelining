@@ -2,13 +2,7 @@ from AI_Brain.llm_client import ask_llm
 from AI_Brain.prompt_templates import eda_explanation_prompt
 
 
-def explain_eda_results(
-    eda_results,
-    target_column=None,
-    problem_type=None,
-    plot_recommendations=None,
-    plot_summaries=None
-):
+def explain_eda_results(eda_results, target_column=None, problem_type=None, plot_recommendations=None, plot_summaries=None):
     """
     Uses AI_Brain to explain EDA results in simple business-friendly language.
 
@@ -40,19 +34,10 @@ def explain_eda_results(
         )
     }
 
-    prompt = eda_explanation_prompt(
-        eda_summary=summary_for_llm,
-        target_column=target_column,
-        problem_type=problem_type
-    )
+    prompt = eda_explanation_prompt(eda_summary=summary_for_llm, target_column=target_column, problem_type=problem_type)
 
     response = ask_llm(prompt)
 
-    cleaned_response = (
-        str(response)
-        .replace("\\n", "\n")
-        .replace("**", "")
-        .strip()
-    )
+    cleaned_response = (str(response).replace("\\n", "\n").replace("**", "").strip())
 
     return cleaned_response

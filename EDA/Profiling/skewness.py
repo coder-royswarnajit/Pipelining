@@ -42,21 +42,15 @@ def detect_skewness(df, type_info=None, target_column=None):
 
         if abs(skew_value) < 0.5:
             skew_type = "Approximately Symmetric"
+            direction = "Symmetric"
 
         elif 0.5 <= abs(skew_value) < 1:
             skew_type = "Moderately Skewed"
+            direction = "Right Skewed" if skew_value > 0 else "Left Skewed"
 
         else:
             skew_type = "Highly Skewed"
-
-        if skew_value > 0:
-            direction = "Right Skewed"
-
-        elif skew_value < 0:
-            direction = "Left Skewed"
-
-        else:
-            direction = "Symmetric"
+            direction = "Right Skewed" if skew_value > 0 else "Left Skewed"
 
         skewness_report[col] = {
             "skewness": round(skew_value, 3),

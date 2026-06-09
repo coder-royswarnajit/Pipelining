@@ -96,7 +96,7 @@ def generate_ai_recommended_plots(
                 "columns": columns,
                 "title": title,
                 "plot_path": None,
-                "alt_text": None,
+                
                 "insights": {}
             }
 
@@ -238,7 +238,7 @@ def generate_ai_recommended_plots(
             plt.tight_layout()
 
             alt_text = get_alt_text()
-            summary["alt_text"] = alt_text
+            
 
             file_name = (
                 f"{i + 1}_{plot_type}_"
