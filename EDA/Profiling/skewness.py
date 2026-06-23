@@ -24,7 +24,7 @@ def detect_skewness(df, type_info=None, target_column=None):
         if detected_type == "identifier":
             continue
 
-        if detected_type in ["binary", "categorical_numeric"]:
+        if detected_type in ["binary", "categorical"]:
             continue
 
         if type_info is not None and detected_type != "continuous":

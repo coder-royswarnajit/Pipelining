@@ -20,8 +20,8 @@ def detect_outliers(df, type_info=None):
             print(f"Skipped identifier column from outlier detection: {col}")
             continue
 
-        # Skip binary and categorical numeric columns
-        if detected_type in ["binary", "categorical_numeric"]:
+        # Skip binary and categorical columns
+        if detected_type in ["binary", "categorical"]:
             continue
 
         # If type_info is provided, only allow continuous columns

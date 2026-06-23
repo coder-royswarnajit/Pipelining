@@ -7,7 +7,6 @@ from AI_Brain.prompt_templates import column_type_detection_prompt
 ALLOWED_TYPES = {
     "binary",
     "categorical",
-    "categorical_numeric",
     "continuous",
     "datetime",
     "identifier",
@@ -127,7 +126,8 @@ def detect_column_types(df):
     column_info = build_column_info_for_ai(df)
 
     prompt = column_type_detection_prompt(
-        column_metadata=column_info
+        column_metadata=column_info,
+        sample_rows=df.head(5).to_dict(orient="records")
     )
 
     ai_response = ask_llm(prompt)

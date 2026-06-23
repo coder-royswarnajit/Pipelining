@@ -1,65 +1,7 @@
-def target_column_prompt(metadata, sample_rows):
-    prompt = f"""You are an expert Machine Learning Engineer.
-
-                    Your task is to analyze the dataset metadata and first 5 rows, then identify the most likely target column or target columns.
-
-                    You must decide based on:
-                    1. Column names
-                    2. Data types
-                    3. Unique values
-                    4. Missing values
-                    5. Meaning of first 5 rows
-                    6. Whether the column looks like an output/label/result/status/failure column
-
-                    Dataset Metadata:
-                    {metadata}
-
-                    First 5 Rows:
-                    {sample_rows}
-
-                    Return your answer in this format only:
-
-                    Possible Target Columns:
-                    - column_name: reason
-
-                    Best Target Column:
-                    column_name
-                    """
-    return prompt
+import json
 
 
-def problem_type_prompt(metadata, sample_rows, target_column):
-    prompt = f"""You are an expert Machine Learning Engineer.
-
-                    Your task is to decide whether the machine learning problem is:
-                    1. Classification
-                    2. Regression
-                    3. Unknown
-
-                    Use the given metadata, first 5 rows, and selected target column.
-
-                    Dataset Metadata:
-                    {metadata}
-
-                    First 5 Rows:
-                    {sample_rows}
-
-                    Selected Target Column:
-                    {target_column}
-
-                    Rules:
-                    - If the target column has categories, labels, classes, yes/no, 0/1, failure/no failure,
-                    then it is a classification problem.
-                    - If the target column is continuous numerical output,
-                    then it is a regression problem.
-                    - If the target column is unclear, say unknown.
-
-                    Return your answer in this format only: classification / regression / unknown
-
-                    """
-    return prompt
-
-def column_type_detection_prompt(column_metadata):
+def column_type_detection_prompt(column_metadata, sample_rows):
     prompt = f"""You are an expert Data Scientist.
 
                 Your task is to detect the semantic type of each dataset column.
@@ -67,7 +9,6 @@ def column_type_detection_prompt(column_metadata):
                     - empty
                     - binary
                     - categorical
-                    - categorical_numeric
                     - continuous
                     - datetime
                     - identifier
@@ -90,31 +31,27 @@ def column_type_detection_prompt(column_metadata):
                     - non-numeric class/category columns
                     - low or moderate number of repeated labels
 
-                    4. categorical_numeric:
-                    - numeric values that behave like categories/classes
-                    - example: 0, 1, 2, 3 rating/category codes
-
-                    5. continuous:
+                    4. continuous:
                     - numeric measurement columns
                     - values represent quantities, sensor readings, price, age, temperature, pressure, etc.
 
-                    6. datetime:
+                    5. datetime:
                     - date/time columns
 
-                    7. text:
+                    6. text:
                     - long free-text columns or descriptions
 
-                    8. empty:
+                    7. empty:
                     - column has no non-null values
 
-                    9. unknown:
+                    8. unknown:
                     - use only when unclear
 
                     Important:
                     - Do not classify numeric target-like columns as identifier just because they are unique.
                     - If a column is named x and numeric, it is usually continuous.
                     - If a column is named y and numeric with many unique values, it is usually continuous.
-                    - If a column is named y but has few repeated classes, it may be categorical_numeric or binary.
+                    - If a column is named y but has few repeated classes, it may be categorical or binary.
                     - Return valid Python dictionary format only.
                     - Do not include explanations outside the dictionary.
 
@@ -163,23 +100,20 @@ Rules:
    - bar preferred
    - pie only if very low cardinality
 
-4. categorical_numeric:
-   - bar
-
-5. identifier:
+4. identifier:
    - skip
 
-6. text:
+5. text:
    - skip
 
-7. datetime:
+6. datetime:
    - line only if paired with a numeric column
 
-8. regression target:
+7. regression target:
    - recommend scatter plots between continuous input features and the target
 
-9. classification target:
-   - recommend bar plots or boxplots grouped by target if suitable
+8. classification target:
+   - recommend bar plots or boxplots grouped by target if suitable, but not scatter plot
 
 Important:
 - Use only these plot types: histogram, boxplot, line, bar, pie, scatter, skip
@@ -279,3 +213,123 @@ def eda_explanation_prompt(eda_summary, target_column=None, problem_type=None):
         ...
 
         """
+
+def plot_explanation_prompt(plot_payload):
+    return f"""
+            You are an expert Data Analyst.
+
+            You will receive a compact batch of plot metadata and statistics.
+
+            Your task is to explain what the data is saying in simple, natural language.
+
+            Rules:
+            - Focus on interpreting the data.
+            - Explain patterns, trends, concentration, spread, variability, relationships, and unusual observations.
+            - Do NOT explain what a graph type is.
+            - Do NOT mention terms such as histogram, scatter plot, box plot, bar chart, or pie chart.
+            - Do NOT provide business recommendations.
+            - Do NOT provide action items.
+            - Do NOT use phrases like "this graph shows" or "this chart shows".
+            - Keep each explanation between 2 and 4 sentences.
+            - Make explanations understandable to non-technical users.
+            - Return ONLY valid JSON.
+
+            Expected Format:
+
+            {{
+                "plot_key": {{
+                    "summary": "Explanation here"
+                }}
+            }}
+
+            Return one top-level key per plot_key in the batch.
+
+            Visualization Information:
+
+            {json.dumps(plot_payload, separators=(",", ":"))}
+            """
+            
+            
+def build_imputation_recommendation_prompt(metadata):
+    """
+    Generates column-wise missing value handling recommendations.
+
+    Returns JSON only.
+    """
+
+    return f"""
+You are an expert Data Scientist.
+
+Your task is to recommend the most appropriate missing-value handling strategy
+for every column in a dataset.
+
+Rules:
+
+NUMERIC COLUMNS:
+Choose exactly one:
+- mean
+- median
+- knn
+- zero
+- drop
+
+CATEGORICAL COLUMNS:
+Choose exactly one:
+- mode
+- unknown
+- drop
+
+TEXT COLUMNS:
+Choose exactly one:
+- unknown
+- drop
+
+
+IDENTIFIER COLUMNS:
+Choose exactly one:
+- drop
+
+Decision Guidelines:
+
+Numeric:
+- mean → low skewness and low missing %
+- median → skewed distributions
+- knn → correlated numeric features and moderate missing %
+- zero → when missing likely means absence/count=0
+- drop → very high missing %
+
+Categorical:
+- mode → low/moderate missing %
+- unknown → missing itself may contain information
+- drop → very high missing %
+
+Text:
+- unknown or drop
+
+Datetime:
+- forward_fill when appropriate
+- drop if unusable
+
+Return ONLY valid JSON.
+
+Example:
+
+{{
+  "Age": {{
+    "strategy": "median",
+    "reason": "Right-skewed distribution"
+  }},
+  "Income": {{
+    "strategy": "knn",
+    "reason": "Correlated with multiple numeric features"
+  }},
+  "Gender": {{
+    "strategy": "mode",
+    "reason": "Low missing percentage"
+  }}
+}}
+
+Dataset Metadata:
+
+{metadata}
+"""

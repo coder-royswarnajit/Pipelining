@@ -11,9 +11,7 @@ def analyze_cardinality(df, type_info):
 
     allowed_types = [
         "binary",
-        "categorical",
-        "categorical_numeric",
-        "text"
+        "categorical"
     ]
 
     for col in df.columns:

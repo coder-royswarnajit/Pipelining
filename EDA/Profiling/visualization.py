@@ -68,14 +68,17 @@ def generate_ai_recommended_plots(
         try:
             plt.figure(figsize=(8, 5))
 
+            plot_key = (
+                f"{i + 1}_{plot_type}_"
+                f"{safe_column_name('_'.join(map(str, columns)))}")
+
             summary = {
+                "plot_key": plot_key,
                 "plot_type": plot_type,
                 "columns": columns,
                 "title": title,
                 "plot_path": None,
-                
-                "insights": {}
-            }
+                "insights": {} }
 
             if plot_type == "histogram":
                 col = columns[0]
@@ -83,7 +86,7 @@ def generate_ai_recommended_plots(
 
                 plt.hist(series, bins=30, edgecolor="black")
                 plt.xlabel(col)
-                plt.ylabel("Frequency")
+                plt.ylabel("Count")
                 plt.title(title or f"Histogram of {col}")
 
                 summary["insights"] = {
@@ -180,6 +183,16 @@ def generate_ai_recommended_plots(
             elif plot_type == "scatter":
                 x_col = columns[0]
                 y_col = columns[1]
+
+                if (
+                    not pd.api.types.is_numeric_dtype(df[x_col])
+                    or not pd.api.types.is_numeric_dtype(df[y_col])
+                ):
+                    print(
+                        f"Skipping scatter for non-numeric columns: {x_col}, {y_col}"
+                    )
+                    plt.close()
+                    continue
 
                 plot_df = df[[x_col, y_col]].dropna()
 

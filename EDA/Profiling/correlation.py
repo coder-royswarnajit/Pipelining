@@ -125,7 +125,6 @@ def correlation_heatmap(
         if detected_type in [
             "binary",
             "categorical",
-            "categorical_numeric",
             "datetime",
             "text"
         ]:

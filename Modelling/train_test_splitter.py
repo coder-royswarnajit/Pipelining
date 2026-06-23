@@ -1,5 +1,4 @@
 from sklearn.model_selection import train_test_split
-from sklearn.model_selection import RepeatedStratifiedKFold, RepeatedKFold
 
 
 def split_data(df, target_column, problem_type, test_size=0.2, random_state=42):
@@ -54,20 +53,3 @@ def split_data(df, target_column, problem_type, test_size=0.2, random_state=42):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state, stratify=stratify_value)
 
     return X_train, X_test, y_train, y_test
-
-
-def get_cv_strategy(problem_type, n_splits=5, n_repeats=3, random_state=42):
-    """
-    Returns appropriate cross-validation strategy.
-    """
-
-    problem_type = problem_type.lower()
-
-    if problem_type == "classification":
-        return RepeatedStratifiedKFold(n_splits=n_splits, n_repeats=n_repeats, random_state=random_state)
-
-    elif problem_type == "regression":
-        return RepeatedKFold(n_splits=n_splits, n_repeats=n_repeats, random_state=random_state)
-
-    else:
-        raise ValueError("problem_type must be either 'classification' or 'regression'")

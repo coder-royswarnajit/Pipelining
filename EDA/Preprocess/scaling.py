@@ -6,9 +6,7 @@ def fit_scaler(X_train):
     Fits scaler only on X_train.
     """
 
-    numeric_cols = X_train.select_dtypes(
-        include=["int64", "float64"]
-    ).columns.tolist()
+    numeric_cols = X_train.select_dtypes(include=["int64", "float64"]).columns.tolist()
 
     scaler = StandardScaler()
 
