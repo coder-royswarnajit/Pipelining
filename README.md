@@ -1,4 +1,4 @@
-# Automated EDA, AI Analysis, and Modelling Pipeline
+# AI Assisted Autom-EDA and Modelling Pipeline
 
 This project is an end-to-end automated data analysis and machine learning workflow built with Streamlit. It allows a user to upload a dataset, run exploratory data analysis, use an AI-assisted analysis layer, generate visualizations, explain the results, and run baseline machine learning models.
 

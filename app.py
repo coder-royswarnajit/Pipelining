@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 from unittest import result
 import pandas as pd
@@ -23,6 +24,7 @@ if EDA_PATH not in sys.path:
     sys.path.append(EDA_PATH)
 
 
+from Profiling import summary
 from Profiling.profiling_pipeline import run_eda_pipeline
 from Profiling.visualization import generate_ai_recommended_plots
 from Profiling.correlation import correlation_heatmap
@@ -179,7 +181,7 @@ def display_eda_report(eda_results):
                 st.write(value)
 
 
-def generate_eda_html_report(eda_results):
+def generate_full_html_report(eda_results,model_results):
     html = """
     <html>
     <head>
@@ -262,7 +264,7 @@ def generate_eda_html_report(eda_results):
 
     for key, value in eda_results.items():
         # Exclude internal keys from downloaded report
-        if key in ["plot_paths", "metadata", "dataset_summary"]:
+        if key in ["plot_paths", "metadata", "dataset_summary","plot_summaries", "plot_explanations", "plot_recommendations", "heatmap_path", "heatmap_summary"]:
             continue
 
         section_title = key.replace("_", " ").title()
@@ -288,9 +290,8 @@ def generate_eda_html_report(eda_results):
         else:
             html += f"<pre>{str(value)}</pre>"
 
-        # If this is the EDA explanation section, append plot explanations below it
         if key == "eda_explanation":
-            plot_explanations = eda_results.get("plot_explanations")
+            plot_explanations = eda_results.get("plot_explanations",{})
             if plot_explanations is not None:
                 html += "<h3>Plot Explanations</h3>"
                 try:
@@ -304,13 +305,103 @@ def generate_eda_html_report(eda_results):
 
         html += "</div>"
 
-    # Note: plots are intentionally NOT embedded in the HTML report.
-    # All plots are shown in the "All Plots" tab only.
+    html += "<h1>Plots</h1>"
+
+    for plot_path in eda_results.get("plot_paths", []):
+
+        if not os.path.exists(plot_path):
+            continue
+
+        with open(plot_path, "rb") as img:
+                encoded = base64.b64encode(
+                    img.read()
+                ).decode()
+        
+        plot_name = os.path.splitext(
+            os.path.basename(plot_path)
+        )[0]
+
+        summary = ""
+
+        if plot_name in plot_explanations:
+            explanation = plot_explanations[plot_name]
+
+            if isinstance(explanation, dict):
+                summary = explanation.get(
+                    "summary",
+                    ""
+                )
+            else:
+                summary = str(explanation)
+        
+    
+
+        plot_name = os.path.splitext(
+            os.path.basename(plot_path)
+        )[0]
+
+        plot_name = re.sub(
+            r"^\d+_",
+            "",
+            plot_name
+        )
+
+        plot_name = plot_name.replace(
+            "_",
+            " "
+        ).title()
+
+        html += f"""
+            <div class='section'>
+                <h3>{plot_name}</h3>
+                <img src="data:image/png;base64,{encoded}">
+                <p>{summary}</p>
+            </div>
+            """
+    html += "<h1>Modelling Results</h1>"
+
+    for model_name, result in model_results.items():
+
+        html += f"<h2>{model_name}</h2>"
+
+        metrics = {
+            k: v
+            for k, v in result.items()
+            if k not in [
+                "model",
+                "actual_values",
+                "predicted_values",
+                "confusion_matrix",
+                "feature_importance",
+                "coefficients",
+                "X_train",
+                "X_test",
+                "y_train",
+                "y_test"
+            ]
+        }
+
+        metrics_df = pd.DataFrame(
+            metrics.items(),
+            columns=["Metric", "Value"]
+        )
+
+        html += metrics_df.to_html(index=False)
+
+        if "confusion_matrix" in result:
+
+            html += "<h3>Confusion Matrix</h3>"
+
+            cm_df = pd.DataFrame(
+                result["confusion_matrix"]
+            )
+
+            html += cm_df.to_html(index=False)
 
     html += """
-    </body>
-    </html>
-    """
+                </body>
+                </html>
+                """
 
     return html
 
@@ -547,9 +638,9 @@ def main():
             if "eda_results" in st.session_state:
                 display_eda_report(st.session_state["eda_results"])
 
-                html_report = generate_eda_html_report(st.session_state["eda_results"])
+                html_report = generate_full_html_report(eda_results=st.session_state["eda_results"],model_results=st.session_state.get("model_results", {}))
                 st.download_button(
-                    label="Download EDA Report",
+                    label="Download Report",
                     data=html_report,
                     file_name="eda_report.html",
                     mime="text/html",
@@ -576,86 +667,7 @@ def main():
             plot_paths = eda_results.get("plot_paths", [])
             plot_explanations = eda_results.get("plot_explanations", {})
             plot_summaries = eda_results.get("plot_summaries", [])
-
-            st.markdown(
-                """
-                <style>
-                .plot-card {
-                    position: relative;
-                    display: block;
-                    margin-bottom: 1.25rem;
-                    border-radius: 12px;
-                    overflow: hidden;
-                    border: 1px solid rgba(148, 163, 184, 0.35);
-                    background: #ffffff;
-                    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
-                }
-
-                .plot-card img {
-                    width: 100%;
-                    height: auto;
-                    display: block;
-                }
-
-                .plot-tooltip {
-                    visibility: hidden;
-                    opacity: 0;
-                    transition: opacity 0.25s ease;
-                    position: absolute;
-                    inset: 0;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 1rem;
-                    background: rgba(15, 23, 42, 0.78);
-                    color: #ffffff;
-                    text-align: center;
-                    font-size: 0.95rem;
-                    line-height: 1.5;
-                }
-
-                .plot-card:hover .plot-tooltip {
-                    visibility: visible;
-                    opacity: 1;
-                }
-
-                .plot-title {
-                    padding: 0.65rem 0.85rem;
-                    font-size: 0.92rem;
-                    font-weight: 600;
-                    color: #0f172a;
-                    border-top: 1px solid rgba(148, 163, 184, 0.2);
-                    background: #f8fafc;
-                }
-                </style>
-                """,
-                unsafe_allow_html=True,
-            )
-
-            def _render_plot_card(plot_path, title, tooltip_text):
-                try:
-                    with open(plot_path, "rb") as image_file:
-                        image_bytes = image_file.read()
-                    image_b64 = base64.b64encode(image_bytes).decode("utf-8")
-                    file_ext = os.path.splitext(plot_path)[1].lower().lstrip(".")
-                    mime_type = "image/png" if file_ext in ("", "png") else f"image/{file_ext}"
-
-                    safe_title = html.escape(title)
-                    safe_tooltip = html.escape(tooltip_text or "No summary available.").replace("\n", "<br>")
-
-                    st.markdown(
-                        f"""
-                        <div class="plot-card">
-                            <img src="data:{mime_type};base64,{image_b64}" alt="{safe_title}">
-                            <div class="plot-tooltip">{safe_tooltip}</div>
-                            <div class="plot-title">{safe_title}</div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-                except Exception as exc:
-                    st.warning(f"Could not render plot {os.path.basename(plot_path)}: {exc}")
-
+            
             def _resolve_plot_summary(plot_path):
                 plot_stem = os.path.splitext(os.path.basename(plot_path))[0]
 
@@ -693,51 +705,48 @@ def main():
 
                 return ""
 
-            for i in range(0, len(plot_paths), 2):
-                cols = st.columns(2)
 
-                for j in range(2):
+            for plot_path in plot_paths:
 
-                    idx = i + j
+                if not os.path.exists(plot_path):
+                    st.warning(f"Missing image: {plot_path}")
+                    continue
 
-                    if idx >= len(plot_paths):
-                        break
+                summary_text = _resolve_plot_summary(plot_path)
 
-                    plot_path = plot_paths[idx]
-                    col = cols[j]
-                    
-                    if not isinstance(plot_path, str):
-                        continue
+                plot_name = os.path.splitext(
+                    os.path.basename(plot_path)
+                )[0]
 
-                    if os.path.exists(plot_path):
-                        summary_text = _resolve_plot_summary(plot_path)
+                import re
 
-                        with col:
-                            import re
+                plot_name = re.sub(r"^\d+_", "", plot_name)
+                plot_name = plot_name.replace("_", " ").title()
 
-                            plot_name = os.path.splitext(
-                                os.path.basename(plot_path)
-                            )[0]
+                left_col, right_col = st.columns([3, 2])
 
-                            plot_name = re.sub(
-                                r"^\d+_",
-                                "",
-                                plot_name
-                            )
+                with left_col:
+                    st.image(
+                        plot_path,
+                        width=700
+                    )
 
-                            plot_name = plot_name.replace(
-                                "_",
-                                " "
-                            ).title()
+                with right_col:
+                    st.markdown(f"""<div style="
+                                        border:1px solid #ddd;
+                                        border-radius:10px;
+                                        padding:15px;
+                                        background:#f8f9fa;
+                                    ">
+                                        <h4>{plot_name}</h4>
+                                        <p>{summary_text}</p>
+                                    </div>
+                                    """,
+                                    unsafe_allow_html=True)
 
-                            _render_plot_card(
-                                plot_path=plot_path,
-                                title=plot_name,
-                                tooltip_text=summary_text,
-                            )
 
-                    else:
-                        col.warning(f"Missing image: {plot_path}")
+                st.divider()
+
                     
 
     # --- Tab 3: Modelling ---

@@ -17,7 +17,7 @@ def normalize_detected_type(value):
 
 
 def get_alt_text():
-    # matplotalt removed — alt text generation disabled
+    
     return None
 
 

@@ -83,6 +83,12 @@ def preprocess_train_test_for_model(
         X_train = transform_missing_values(X_train, imputers)
         X_test = transform_missing_values(X_test, imputers)
         
+    if (balancing and problem_type == "classification" and y_train is not None):
+        balancing_config = fit_balancer(X_train, y_train, metadata)
+        X_train, y_train = transform_balancer(X_train, y_train, balancing_config)
+
+        preprocessing_report["balancing"] = balancing_config
+        
     if outliers:
         outlier_bounds = fit_outlier_bounds(X_train)
 
@@ -131,15 +137,7 @@ def preprocess_train_test_for_model(
             "original_features": pca_config.get("original_features"),
             "reduced_features": pca_config.get("reduced_features"),
             "variance_retained": round(pca_config.get("variance_retained", 0), 4)}
-
     
-    if (balancing and problem_type == "classification" and y_train is not None):
-
-        balancing_config = fit_balancer(y_train)
-        X_train, y_train = transform_balancer(X_train, y_train, balancing_config)
-
-        preprocessing_report["balancing"] = balancing_config
-        
 
     train_nan_cols = X_train.columns[X_train.isnull().any()].tolist()
     test_nan_cols = X_test.columns[X_test.isnull().any()].tolist()

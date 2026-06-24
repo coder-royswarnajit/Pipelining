@@ -230,8 +230,11 @@ def plot_explanation_prompt(plot_payload):
             - Do NOT provide business recommendations.
             - Do NOT provide action items.
             - Do NOT use phrases like "this graph shows" or "this chart shows".
-            - Keep each explanation between 2 and 4 sentences.
+            - Keep each explanation between 1 to 2 sentences.
             - Make explanations understandable to non-technical users.
+            - Make the headings properly visible and clear.
+            - Don't include takeaways or recommendations, just insights.
+            - Don't suggest anything to do with the data, just explain what the data is saying.
             - Return ONLY valid JSON.
 
             Expected Format:

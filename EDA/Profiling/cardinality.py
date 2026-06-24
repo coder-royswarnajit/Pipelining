@@ -28,12 +28,18 @@ def analyze_cardinality(df, type_info):
         # Skip continuous columns
         if detected_type not in allowed_types:
             continue
+        
+        non_null_count = series.notna().sum()
+        unique_count = series.nunique(dropna=True)
 
-        unique_count = series.nunique()
-        unique_ratio = unique_count / len(series)
+        unique_ratio = (
+            unique_count / non_null_count
+            if non_null_count > 0
+            else 0
+        )
 
-        if unique_ratio > 0.9:
-            cardinality_type = "Identifier-like"
+        if unique_ratio == 1.0:
+            cardinality_type = "Identifier"
 
         elif unique_ratio >= 0.50:
             cardinality_type = "High Cardinality"
