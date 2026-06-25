@@ -261,15 +261,21 @@ def build_imputation_recommendation_prompt(metadata):
     """
 
     return f"""
-You are an expert Data Scientist.
+You are a Senior Data Scientist responsible for designing a robust data preprocessing pipeline.
 
-Your task is to recommend the most appropriate missing-value handling strategy
-for every column in a dataset.
+Your task is to recommend EXACTLY ONE missing-value handling strategy for EACH column in the dataset.
 
-Rules:
+You must use the provided metadata to determine the most appropriate strategy.
+
+Do NOT generate Python code.
+Do NOT ask for additional information.
+Return ONLY valid JSON.
+
+--------------------------------------------------
+AVAILABLE STRATEGIES
+--------------------------------------------------
 
 NUMERIC COLUMNS:
-Choose exactly one:
 - mean
 - median
 - knn
@@ -277,62 +283,311 @@ Choose exactly one:
 - drop
 
 CATEGORICAL COLUMNS:
-Choose exactly one:
 - mode
 - unknown
 - drop
 
 TEXT COLUMNS:
-Choose exactly one:
 - unknown
 - drop
 
-
 IDENTIFIER COLUMNS:
-Choose exactly one:
 - drop
 
-Decision Guidelines:
+DATETIME COLUMNS:
+- forward_fill
+- drop
 
-Numeric:
-- mean → low skewness and low missing %
-- median → skewed distributions
-- knn → correlated numeric features and moderate missing %
-- zero → when missing likely means absence/count=0
-- drop → very high missing %
+--------------------------------------------------
+DECISION RULES
+--------------------------------------------------
 
-Categorical:
-- mode → low/moderate missing %
-- unknown → missing itself may contain information
-- drop → very high missing %
+GENERAL:
 
-Text:
-- unknown or drop
+- Every column must receive exactly ONE strategy.
 
-Datetime:
-- forward_fill when appropriate
-- drop if unusable
+- Consider:
+  - Missing percentage
+  - Column type
+  - Cardinality
+  - Distribution characteristics
+  - Business usefulness
+  - Whether the column appears predictive
+
+- Prefer preserving useful information whenever reasonable.
+
+- Use "drop" only when there is strong evidence the column provides little value or contains excessive missing values.
+
+--------------------------------------------------
+NUMERIC COLUMNS
+--------------------------------------------------
+
+Use "mean" when:
+- Distribution appears approximately symmetric.
+- Missing percentage is low.
+- Outliers do not dominate the column.
+
+Use "median" when:
+- Distribution is skewed.
+- Outliers are present.
+- Robust imputation is preferred.
+
+Use "knn" when:
+- Missing percentage is moderate.
+- Column appears related to other numeric features.
+- Preserving feature relationships is important.
+
+Use "zero" when:
+- Missing values likely represent absence.
+- Counts, frequencies, quantities, or event occurrences.
+- Zero is a meaningful value.
+
+Use "drop" when:
+- Missing percentage is extremely high.
+- Column usefulness appears limited.
+
+--------------------------------------------------
+CATEGORICAL COLUMNS
+--------------------------------------------------
+
+Use "mode" when:
+- Missing percentage is low to moderate.
+- Most common category is representative.
+
+Use "unknown" when:
+- Missingness may carry information.
+- Missing values could represent a distinct category.
+- The dataset may benefit from retaining missing-value signals.
+
+Use "drop" when:
+- Missing percentage is extremely high.
+- Column appears unlikely to contribute meaningful information.
+
+--------------------------------------------------
+TEXT COLUMNS
+--------------------------------------------------
+
+Use "unknown" when:
+- Text content may still be useful after imputation.
+- Missing values can be represented as a placeholder.
+
+Use "drop" when:
+- Missing percentage is extremely high.
+- Column appears unusable.
+
+--------------------------------------------------
+IDENTIFIER COLUMNS
+--------------------------------------------------
+
+Use "drop" for:
+- IDs
+- UUIDs
+- Transaction IDs
+- Record IDs
+- Other unique identifiers
+
+--------------------------------------------------
+DATETIME COLUMNS
+--------------------------------------------------
+
+Use "forward_fill" when:
+- Values appear sequential or time-dependent.
+- Missing values can reasonably inherit nearby timestamps.
+
+Use "drop" when:
+- The column is mostly missing.
+- The datetime information appears unusable.
+
+--------------------------------------------------
+IMPORTANT
+--------------------------------------------------
+
+- Recommend exactly one strategy per column.
+- Every recommendation must include a concise reason.
+- Base decisions ONLY on supplied metadata.
+- Be consistent across similar columns.
+- Return valid JSON only.
+- No markdown.
+- No explanations outside JSON.
+
+Expected Output Format:
+
+{{
+    "column_name": {{
+        "strategy": "median",
+        "reason": "Skewed numeric distribution with moderate missing values."
+    }},
+    "another_column": {{
+        "strategy": "unknown",
+        "reason": "Missingness may represent a meaningful category."
+    }}
+}}
+
+--------------------------------------------------
+DATASET METADATA
+--------------------------------------------------
+
+{metadata}
+"""
+
+
+def build_metric_recommendation_prompt(
+    metadata,
+    sample_rows,
+    target_column=None,
+    problem_type=None,
+    target_context=None,
+    target_distribution=None,
+    dataset_statistics=None,
+):
+    if problem_type == "classification":
+        allowed_metrics = "accuracy, precision, recall, f1_score"
+
+        metric_guidance = """
+Metric Definitions:
+
+- accuracy:
+  Use when classes are reasonably balanced and false positives and false negatives
+  have similar business impact.
+
+- precision:
+  Use when false positives are more costly than false negatives.
+  Examples: spam filtering, expensive customer outreach, manual review systems.
+
+- recall:
+  Use when false negatives are more costly than false positives.
+  Examples: fraud detection, disease screening, safety monitoring.
+
+- f1_score:
+  Use when both precision and recall matter and a balanced tradeoff is required.
+  Common choice for imbalanced classification problems.
+"""
+
+    else:
+        allowed_metrics = "mae, mse, rmse, r2_score"
+
+        metric_guidance = """
+Metric Definitions:
+
+- mae:
+  Measures average absolute prediction error.
+  Easy to interpret and robust to outliers.
+
+- rmse:
+  Penalizes large errors more heavily.
+  Suitable when large prediction mistakes are especially costly.
+
+- mse:
+  Similar to RMSE but expressed in squared units.
+  Useful for optimization-focused evaluation.
+
+- r2_score:
+  Measures how much variance in the target is explained by the model.
+  Useful when explanatory power matters more than prediction error.
+"""
+
+    return f"""
+You are a senior Machine Learning Engineer responsible for selecting the most appropriate
+PRIMARY evaluation metric for model comparison and ranking.
+
+Your goal is NOT to choose a mathematically popular metric.
+
+Your goal is to choose the metric that best aligns with:
+
+1. Dataset characteristics
+2. Target distribution
+3. Business objective
+4. Error costs
+5. Class imbalance (if classification)
+6. Outliers and skewness (if regression)
+
+You must reason like a real-world ML practitioner.
+
+----------------------------------------
+AVAILABLE METRICS
+----------------------------------------
+
+{allowed_metrics}
+
+{metric_guidance}
+
+----------------------------------------
+DATASET INFORMATION
+----------------------------------------
+
+Metadata:
+{metadata}
+
+Dataset Statistics:
+{dataset_statistics}
+
+Sample Rows:
+{sample_rows}
+
+Target Column:
+{target_column}
+
+Problem Type:
+{problem_type}
+
+Target Distribution:
+{target_distribution}
+
+Business Context:
+{target_context}
+
+----------------------------------------
+DECISION RULES
+----------------------------------------
+
+For Classification:
+
+- If the dataset is heavily imbalanced,
+  avoid accuracy unless there is strong evidence otherwise.
+
+- If missing a positive case is more costly than a false alarm,
+  prefer recall.
+
+- If false alarms are more costly than missed positives,
+  prefer precision.
+
+- If both error types matter,
+  prefer f1_score.
+
+- Use accuracy only when classes are reasonably balanced and
+  error costs appear similar.
+
+For Regression:
+
+- If target values contain significant outliers or skewness,
+  prefer mae unless business requirements suggest otherwise.
+
+- If large prediction errors are especially harmful,
+  prefer rmse.
+
+- Use mse only when emphasis is on optimization sensitivity
+  rather than interpretability.
+
+- Use r2_score when explaining variance is more important than
+  prediction accuracy.
+
+----------------------------------------
+IMPORTANT
+----------------------------------------
+
+- Select EXACTLY ONE primary metric.
+- Do not recommend multiple metrics.
+- Do not generate code.
+- Do not ask for additional information.
+- Base your decision only on the supplied information.
+- If business context is ambiguous, choose the most robust metric
+  for the observed data characteristics.
 
 Return ONLY valid JSON.
 
-Example:
-
 {{
-  "Age": {{
-    "strategy": "median",
-    "reason": "Right-skewed distribution"
-  }},
-  "Income": {{
-    "strategy": "knn",
-    "reason": "Correlated with multiple numeric features"
-  }},
-  "Gender": {{
-    "strategy": "mode",
-    "reason": "Low missing percentage"
-  }}
+    "metric": "<selected_metric>",
+    "reason": "<concise explanation>",
+    "confidence": "high|medium|low"
 }}
-
-Dataset Metadata:
-
-{metadata}
 """

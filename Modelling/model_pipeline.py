@@ -5,7 +5,7 @@ from joblib import Parallel, delayed
 from Modelling.train_test_splitter import split_data
 from Modelling.classification_model import get_classification_models
 from Modelling.regression_model import get_regression_models
-from Modelling.evaluations import evaluate_model
+from Modelling.evaluations import evaluate_model, sort_models_by_ranking_metric
 
 from EDA.Preprocess.preprocess_pipeline import preprocess_train_test_for_model
 
@@ -99,7 +99,14 @@ def train_model(model_name, model, training_data, problem_type):
     return model_name, result
 
 
-def run_model_pipeline(df, target_column, problem_type, metadata=None):
+def run_model_pipeline(
+    df,
+    target_column,
+    problem_type,
+    metadata=None,
+    ranking_metric=None,
+    ranking_metric_info=None,
+):
     """
     Runs the complete modelling pipeline.
 
@@ -148,15 +155,19 @@ def run_model_pipeline(df, target_column, problem_type, metadata=None):
         print("==========================\n")
     
 
-    successful_models = {name: result for name, result in model_results.items() if result["status"] == "success"}
-    failed_models = {name: result for name, result in model_results.items() if result["status"] == "failed"}
-
-    if problem_type == "classification":
-        successful_models = dict(sorted(successful_models.items(), key=lambda x: x[1]["f1_score"], reverse=True))
-        
-    else:
-        successful_models = dict(sorted(successful_models.items(), key=lambda x: x[1]["r2_score"], reverse=True))
+    successful_models, failed_models, ranking_info = sort_models_by_ranking_metric(
+        model_results=model_results,
+        ranking_metric=ranking_metric,
+        problem_type=problem_type,
+    )
 
     model_results = {**successful_models, **failed_models}
+
+    info = ranking_metric_info if isinstance(ranking_metric_info, dict) else {}
+    model_results["_ranking_info"] = {
+        **ranking_info,
+        "reason": info.get("reason", ""),
+        "source": info.get("source", "default" if not ranking_metric else "override"),
+    }
 
     return model_results

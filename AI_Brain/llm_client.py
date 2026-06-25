@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv(r"C:/Users/309168/Desktop/CODES/Pipelining (1)/AI_Brain/.env")
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 model = os.getenv("model")

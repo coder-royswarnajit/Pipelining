@@ -1,6 +1,7 @@
 from AI_Brain.plot_recommender import recommend_plots
 from AI_Brain.eda_explainer import explain_eda_results
 from AI_Brain.imputation_recommender import recommend_imputations
+from AI_Brain.metric_recommender import recommend_ranking_metric
 
 
 def run_ai_brain_pipeline(
@@ -10,6 +11,7 @@ def run_ai_brain_pipeline(
     run_plot_recommendation=True,
     run_eda_explanation=True,
     run_imputation_recommendation=True,
+    run_metric_recommendation=True,
     plot_summaries=None,
     target_column=None,
     problem_type=None,
@@ -47,6 +49,15 @@ def run_ai_brain_pipeline(
         ai_results[
             "imputation_recommendations"
         ] = imputation_recommendations
+
+    if run_metric_recommendation:
+        ranking_metric_recommendation = recommend_ranking_metric(
+            metadata=metadata,
+            df=df,
+            target_column=target_column,
+            problem_type=problem_type,
+        )
+        ai_results["ranking_metric_recommendation"] = ranking_metric_recommendation
 
     if run_eda_explanation and eda_results is not None:
         eda_explanation = explain_eda_results(

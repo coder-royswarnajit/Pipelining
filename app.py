@@ -360,7 +360,16 @@ def generate_full_html_report(eda_results,model_results):
             """
     html += "<h1>Modelling Results</h1>"
 
+    ranking_info = model_results.get("_ranking_info", {})
+    if ranking_info:
+        metric_name = ranking_info.get("metric", "N/A")
+        direction = "higher is better" if ranking_info.get("higher_is_better", True) else "lower is better"
+        reason = ranking_info.get("reason", "")
+        html += f"<p><strong>Ranking metric:</strong> {metric_name} ({direction}). {reason}</p>"
+
     for model_name, result in model_results.items():
+        if model_name == "_ranking_info" or not isinstance(result, dict):
+            continue
 
         html += f"<h2>{model_name}</h2>"
 
@@ -611,11 +620,15 @@ def main():
                             df = df.drop_duplicates()
                             df = df.dropna(subset=[target_column])
                             
+                            ranking_rec = ai_results.get("ranking_metric_recommendation", {})
+
                             model_results = run_model_pipeline(
                                 df=df,
                                 target_column=target_column,
                                 problem_type=problem_type,
-                                metadata=metadata
+                                metadata=metadata,
+                                ranking_metric=ranking_rec.get("metric"),
+                                ranking_metric_info=ranking_rec,
                             )
                             st.session_state["model_results"] = model_results
                             
@@ -850,9 +863,31 @@ def main():
 
             
             if "model_results" in st.session_state:
+                    ranking_info = st.session_state["model_results"].get("_ranking_info", {})
+                    ai_ranking = st.session_state.get("ai_results", {}).get(
+                        "ranking_metric_recommendation", {}
+                    )
+
+                    if ranking_info or ai_ranking:
+                        metric_name = ranking_info.get("metric") or ai_ranking.get("metric", "N/A")
+                        reason = ai_ranking.get("reason") or ranking_info.get("reason", "")
+                        direction = (
+                            "higher is better"
+                            if ranking_info.get("higher_is_better", True)
+                            else "lower is better"
+                        )
+
+                        st.info(
+                            f"Models are ranked by **{metric_name}** ({direction}). "
+                            f"{reason}"
+                        )
+
                     st.subheader("Modelling Results")
 
                     for model_name, result in st.session_state["model_results"].items():
+                        if model_name == "_ranking_info" or not isinstance(result, dict):
+                            continue
+
                         with st.expander(model_name):
 
                                         def _sanitize_display_value(v):
