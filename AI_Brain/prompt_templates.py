@@ -57,6 +57,9 @@ def column_type_detection_prompt(column_metadata, sample_rows):
 
                     Column Metadata:
                     {column_metadata}
+                    
+                    Sample Rows:
+                    {sample_rows}
 
                     Return only in this exact format:
 
@@ -253,7 +256,7 @@ def plot_explanation_prompt(plot_payload):
             """
             
             
-def build_imputation_recommendation_prompt(metadata):
+def build_imputation_recommendation_prompt(metadata, sample_rows):
     """
     Generates column-wise missing value handling recommendations.
 
@@ -386,17 +389,6 @@ Use "drop" for:
 - Record IDs
 - Other unique identifiers
 
---------------------------------------------------
-DATETIME COLUMNS
---------------------------------------------------
-
-Use "forward_fill" when:
-- Values appear sequential or time-dependent.
-- Missing values can reasonably inherit nearby timestamps.
-
-Use "drop" when:
-- The column is mostly missing.
-- The datetime information appears unusable.
 
 --------------------------------------------------
 IMPORTANT
@@ -428,6 +420,9 @@ DATASET METADATA
 --------------------------------------------------
 
 {metadata}
+
+ SAMPLE ROWS
+ {sample_rows}
 """
 
 
@@ -456,7 +451,7 @@ Metric Definitions:
 
 - recall:
   Use when false negatives are more costly than false positives.
-  Examples: fraud detection, disease screening, safety monitoring.
+  Examples: fraud detection, disease screening, safety monitoring,medical datasets.
 
 - f1_score:
   Use when both precision and recall matter and a balanced tradeoff is required.
@@ -590,4 +585,90 @@ Return ONLY valid JSON.
     "reason": "<concise explanation>",
     "confidence": "high|medium|low"
 }}
+"""
+
+def shap_explanation_prompt(
+    shap_analysis,
+    target_column=None,
+    problem_type=None,
+    model_name=None,
+):
+    return f"""
+You are a senior Data Scientist explaining model behavior to a business audience.
+
+Your task is to convert compact SHAP analysis results into practical business context.
+
+Do NOT write code.
+Do NOT mention that you are an AI.
+Do NOT explain the SHAP algorithm.
+Do NOT claim causation. Use wording such as "associated with", "influenced", or
+"the model relied on".
+
+Focus on:
+1. Which features had the strongest influence on the best model, using importance_pct as the contribution percentage.
+2. Whether each influential feature generally pushed predictions up or down.
+3. What this means in simple business language.
+4. Any caution needed when interpreting transformed or encoded feature names.
+
+Keep the explanation concise and useful for a project report. Prefer business language such as "The model relies most heavily on..." over raw SHAP terminology.
+
+SHAP Analysis:
+{json.dumps(shap_analysis, separators=(",", ":"))}
+
+Target Column:
+{target_column}
+
+Problem Type:
+{problem_type}
+
+Best Model:
+{model_name}
+
+Return the explanation in this format:
+
+Model Explanation:
+...
+
+Most Influential Factors:
+- ...
+
+Business Interpretation:
+...
+
+Important Caution:
+...
+"""
+
+
+def optimization_explanation_prompt(
+    model_name,
+    problem_type,
+    optimization_result,
+    shap_analysis,
+):
+    return f"""
+You are an expert machine learning assistant.
+
+The best model is:
+
+{model_name}
+
+Problem Type:
+{problem_type}
+
+Optimization Summary:
+{optimization_result}
+
+SHAP Summary:
+{shap_analysis}
+
+Explain:
+
+1. Why Optuna improved this model.
+2. Which hyperparameters had the biggest effect.
+3. What the optimization results indicate.
+4. Which features are most important according to SHAP.
+5. Explain everything in simple business language.
+
+Keep the explanation concise.
 """

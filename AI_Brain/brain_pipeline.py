@@ -15,7 +15,7 @@ def run_ai_brain_pipeline(
     plot_summaries=None,
     target_column=None,
     problem_type=None,
-):
+) -> dict:
     """
     Runs AI analysis using EDA metadata and first 5 rows of dataset.
 

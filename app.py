@@ -368,7 +368,7 @@ def generate_full_html_report(eda_results,model_results):
         html += f"<p><strong>Ranking metric:</strong> {metric_name} ({direction}). {reason}</p>"
 
     for model_name, result in model_results.items():
-        if model_name == "_ranking_info" or not isinstance(result, dict):
+        if model_name in ["_ranking_info", "_shap_info"] or not isinstance(result, dict):
             continue
 
         html += f"<h2>{model_name}</h2>"
@@ -386,7 +386,9 @@ def generate_full_html_report(eda_results,model_results):
                 "X_train",
                 "X_test",
                 "y_train",
-                "y_test"
+                "y_test",
+                "shap_analysis",
+                "shap_business_explanation"
             ]
         }
 
@@ -406,6 +408,38 @@ def generate_full_html_report(eda_results,model_results):
             )
 
             html += cm_df.to_html(index=False)
+
+        shap_explanation = result.get("shap_business_explanation")
+        shap_analysis = result.get("shap_analysis", {})
+
+        if shap_explanation:
+            escaped_shap_explanation = (
+                str(shap_explanation)
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+            )
+            html += "<h3>Model Explanation</h3>"
+            html += f"<pre>{escaped_shap_explanation}</pre>"
+
+        if isinstance(shap_analysis, dict) and shap_analysis.get("top_features"):
+            top_features = shap_analysis.get("top_features", [])
+            feature_names = [str(item.get("feature")) for item in top_features[:4]]
+            shap_df = pd.DataFrame(
+                [
+                    {
+                        "Feature": item.get("feature"),
+                        "Contribution": item.get("contribution", f"{item.get('importance_pct', 0)}%"),
+                    }
+                    for item in top_features
+                ]
+            )
+
+            html += "<h3>Key Prediction Drivers</h3>"
+            html += "<p>The model relies most heavily on:</p>"
+            html += "<ul>" + "".join(f"<li>{feature}</li>" for feature in feature_names) + "</ul>"
+            html += "<p>These variables had the strongest influence on the model predictions.</p>"
+            html += shap_df.to_html(index=False)
 
     html += """
                 </body>
@@ -553,7 +587,7 @@ def main():
                         df,
                         save_plots=True,
                         plot_folder="eda_plots",
-                        target_column=None
+                        target_column=target_column,
                     )
 
                 metadata = create_metadata_from_eda_results(df=df, eda_results=eda_results)
@@ -629,6 +663,9 @@ def main():
                                 metadata=metadata,
                                 ranking_metric=ranking_rec.get("metric"),
                                 ranking_metric_info=ranking_rec,
+                                imputation_recommendations=ai_results.get(
+                                    "imputation_recommendations", {}
+                                ),
                             )
                             st.session_state["model_results"] = model_results
                             
@@ -885,7 +922,7 @@ def main():
                     st.subheader("Modelling Results")
 
                     for model_name, result in st.session_state["model_results"].items():
-                        if model_name == "_ranking_info" or not isinstance(result, dict):
+                        if model_name in ["_ranking_info", "_shap_info"] or not isinstance(result, dict):
                             continue
 
                         with st.expander(model_name):
@@ -912,7 +949,9 @@ def main():
                                             "X_train",
                                             "X_test",
                                             "y_train",
-                                            "y_test"
+                                            "y_test",
+                                            "shap_analysis",
+                                            "shap_business_explanation"
                                         }
 
                                         display_result = {
@@ -936,6 +975,53 @@ def main():
                                             use_container_width=True,
                                             hide_index=True
                                         )
+                                        
+                                        optimization = result.get("hyperparameter_optimization", {})
+
+                                        if optimization.get("status") == "success":
+                                            st.subheader("Hyperparameter Optimization")
+
+                                            history = optimization.get("history", [])
+
+                                            if history:
+
+                                                history_df = pd.DataFrame(history)
+
+                                                st.dataframe(
+                                                    history_df,
+                                                    use_container_width=True,
+                                                    hide_index=True
+                                                )
+                                        
+                                        
+                                        history = optimization.get("history", [])
+                                        if history:
+
+                                            history_df = pd.DataFrame(history)
+
+                                            fig, ax = plt.subplots(figsize=(8, 4))
+
+                                            ax.plot(
+                                                history_df["trial_number"],
+                                                history_df["value"],
+                                                marker="o",
+                                                linewidth=2,
+                                                markersize=5
+                                            )
+
+                                            ax.set_xlabel("Trial Number")
+                                            ax.set_ylabel(
+                                                optimization.get(
+                                                    "optimization_metric",
+                                                    "Score"
+                                                )
+                                            )
+
+                                            ax.set_title("Optimization Progress")
+
+                                            ax.grid(True, alpha=0.3)
+
+                                            st.pyplot(fig)
 
                                         # Classification: Confusion Matrix
                                         if (result.get("status") == "success" and "confusion_matrix" in result):
@@ -971,6 +1057,46 @@ def main():
 
                                         
                                         st.divider()
+
+                                        shap_explanation = result.get("shap_business_explanation")
+                                        shap_analysis = result.get("shap_analysis", {})
+
+                                        if shap_explanation:
+                                            st.subheader("Model Explanation")
+                                            st.write(shap_explanation)
+
+                                        if isinstance(shap_analysis, dict) and shap_analysis.get("top_features"):
+                                            top_features = shap_analysis.get("top_features", [])
+                                            feature_names = [
+                                                str(item.get("feature"))
+                                                for item in top_features[:4]
+                                            ]
+                                            contribution_df = pd.DataFrame(
+                                                [
+                                                    {
+                                                        "Feature": item.get("feature"),
+                                                        "Contribution": item.get(
+                                                            "contribution",
+                                                            f"{item.get('importance_pct', 0)}%"
+                                                        ),
+                                                    }
+                                                    for item in top_features
+                                                ]
+                                            )
+
+                                            st.subheader("Key Prediction Drivers")
+                                            st.write("The model relies most heavily on:")
+                                            for feature in feature_names:
+                                                st.write(f"- {feature}")
+                                            st.caption(
+                                                "These variables had the strongest influence on the model predictions."
+                                            )
+                                            st.dataframe(
+                                                contribution_df,
+                                                use_container_width=True,
+                                                hide_index=True
+                                            )
+
                                         
                                                 
                                         col1, col2 = st.columns(2)

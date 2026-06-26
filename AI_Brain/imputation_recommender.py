@@ -15,7 +15,7 @@ def recommend_imputations(metadata):
 
     try:
 
-        prompt = (build_imputation_recommendation_prompt(metadata))
+        prompt = (build_imputation_recommendation_prompt(metadata, sample_rows=metadata.get("sample_rows", [])))
         response = ask_llm(prompt)
 
         if not response:
