@@ -35,8 +35,7 @@ def _compact_plot_payload(plot_payload):
 
         compact_item = {
             "plot_key": item.get("plot_key") or item.get("plot_name"),
-            "summary": item.get("summary") or item.get("title") or "",
-        }
+            "summary": item.get("summary") or item.get("title") or "",}
 
         if item.get("plot_type"):
             compact_item["plot_type"] = item.get("plot_type")

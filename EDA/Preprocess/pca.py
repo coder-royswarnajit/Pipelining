@@ -10,10 +10,7 @@ def fit_pca(X_train, feature_threshold=50, variance_retained=0.95):
     n_features = X_train.shape[1]
 
     if n_features <= feature_threshold:
-        return {
-            "apply_pca": False,
-            "original_features": n_features
-        }
+        return {"apply_pca": False, "original_features": n_features}
 
     pca = PCA(n_components=variance_retained, random_state=42)
     pca.fit(X_train)
@@ -42,8 +39,4 @@ def transform_pca(X, pca_config):
 
     columns = [f"PC_{i+1}" for i in range(transformed.shape[1])]
 
-    return pd.DataFrame(
-        transformed,
-        columns=columns,
-        index=X.index
-    )
+    return pd.DataFrame(transformed, columns=columns, index=X.index)

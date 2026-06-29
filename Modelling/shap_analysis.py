@@ -59,11 +59,7 @@ def _aggregate_shap_values(shap_values, feature_names):
     feature_rows = []
     for feature, importance, signed_effect in zip(feature_names, mean_abs, mean_signed):
         importance_value = float(importance)
-        importance_pct = (
-            (importance_value / total_abs_shap) * 100
-            if total_abs_shap > 0
-            else 0.0
-        )
+        importance_pct = ((importance_value / total_abs_shap) * 100 if total_abs_shap > 0 else 0.0)
 
         feature_rows.append(
             {
@@ -84,10 +80,7 @@ def _prediction_summary(model, X_sample, problem_type):
 
     try:
         predictions = model.predict(X_sample)
-        summary["prediction_sample"] = [
-            _to_serializable(value)
-            for value in np.asarray(predictions).ravel()[:10]
-        ]
+        summary["prediction_sample"] = [_to_serializable(value) for value in np.asarray(predictions).ravel()[:10]]
     except Exception:
         pass
 
@@ -135,16 +128,8 @@ def generate_shap_analysis(
         train_columns = list(X_train.columns) if X_train is not None else None
         X_test = _as_dataframe(X_test, columns=train_columns)
 
-        X_background = _sample_frame(
-            X_train,
-            max_rows=max_background_rows,
-            random_state=random_state,
-        )
-        X_explain = _sample_frame(
-            X_test,
-            max_rows=max_explain_rows,
-            random_state=random_state,
-        )
+        X_background = _sample_frame(X_train, max_rows=max_background_rows, random_state=random_state,)
+        X_explain = _sample_frame(X_test, max_rows=max_explain_rows, random_state=random_state,)
 
         if X_background is None or X_explain is None:
             raise ValueError("Training and test data are required for SHAP analysis.")
@@ -163,25 +148,9 @@ def generate_shap_analysis(
             output_type = "prediction"
         
         masker = shap.maskers.Independent(X_background) #type: ignore
-        explainer = shap.Explainer(
-            prediction_function,
-            masker,
-            feature_names=feature_names,
-        )
+        explainer = shap.Explainer(prediction_function, masker, feature_names=feature_names,)
         shap_values = explainer(X_explain)
-
-        feature_importance = _aggregate_shap_values(
-            shap_values=shap_values,
-            feature_names=feature_names,
-        )
-
-        
-        print("\n===== SHAP FEATURES =====")
-
-        for item in feature_importance[:5]:
-            print(item)
-
-        print("=========================\n")
+        feature_importance = _aggregate_shap_values(shap_values=shap_values, feature_names=feature_names,)
         
         return {
             "status": "success",

@@ -44,11 +44,7 @@ def normalize_ranking_metric(metric, problem_type):
     }
 
     normalized = aliases.get(normalized, normalized)
-    allowed = (
-        CLASSIFICATION_RANKING_METRICS
-        if problem_type == "classification"
-        else REGRESSION_RANKING_METRICS
-    )
+    allowed = (CLASSIFICATION_RANKING_METRICS if problem_type == "classification" else REGRESSION_RANKING_METRICS)
 
     if normalized in allowed:
         return normalized
@@ -61,16 +57,9 @@ def resolve_ranking_metric(metric, problem_type):
     if validated is None:
         validated = get_default_ranking_metric(problem_type)
 
-    higher_is_better = (
-        CLASSIFICATION_RANKING_METRICS.get(validated)
-        if problem_type == "classification"
-        else REGRESSION_RANKING_METRICS.get(validated)
-    )
+    higher_is_better = (CLASSIFICATION_RANKING_METRICS.get(validated) if problem_type == "classification" else REGRESSION_RANKING_METRICS.get(validated))
 
-    return {
-        "metric": validated,
-        "higher_is_better": higher_is_better,
-    }
+    return {"metric": validated, "higher_is_better": higher_is_better,}
 
 
 def sort_models_by_ranking_metric(model_results, ranking_metric, problem_type):
@@ -83,24 +72,12 @@ def sort_models_by_ranking_metric(model_results, ranking_metric, problem_type):
     metric = resolved["metric"]
     reverse = resolved["higher_is_better"]
 
-    successful_models = {
-        name: result
-        for name, result in model_results.items()
-        if isinstance(result, dict) and result.get("status") == "success"
-    }
-    failed_models = {
-        name: result
-        for name, result in model_results.items()
-        if not (isinstance(result, dict) and result.get("status") == "success")
-    }
+    successful_models = {name: result for name, result in model_results.items() if isinstance(result, dict) and result.get("status") == "success"}
+    
+    failed_models = {name: result for name, result in model_results.items() if not (isinstance(result, dict) and result.get("status") == "success")}
 
     sorted_successful = dict(
-        sorted(
-            successful_models.items(),
-            key=lambda item: item[1].get(metric, float("-inf") if reverse else float("inf")),
-            reverse=reverse,
-        )
-    )
+        sorted(successful_models.items(), key=lambda item: item[1].get(metric, float("-inf") if reverse else float("inf")), reverse=reverse))
 
     return sorted_successful, failed_models, resolved
 

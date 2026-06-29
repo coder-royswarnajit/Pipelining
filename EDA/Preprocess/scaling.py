@@ -22,15 +22,9 @@ def transform_scaling(X, scaler, numeric_cols):
     """
 
     X = X.copy()
-
-    existing_numeric_cols = [
-        col for col in numeric_cols
-        if col in X.columns
-    ]
+    existing_numeric_cols = [col for col in numeric_cols if col in X.columns]
 
     if len(existing_numeric_cols) > 0:
-        X[existing_numeric_cols] = scaler.transform(
-            X[existing_numeric_cols]
-        )
+        X[existing_numeric_cols] = scaler.transform(X[existing_numeric_cols])
 
     return X

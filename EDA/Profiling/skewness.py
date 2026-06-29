@@ -16,10 +16,7 @@ def detect_skewness(df, type_info=None, target_column=None):
         detected_type = None
 
         if type_info is not None:
-            detected_type = type_info.get(col, {}).get(
-                "detected_type",
-                None
-            )
+            detected_type = type_info.get(col, {}).get("detected_type", None)
 
         if detected_type == "identifier":
             continue

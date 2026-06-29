@@ -11,13 +11,13 @@ def parse_plot_recommendations(response):
     '''
     This function takes the raw LLM response and tries to convert it into a Python list.
 
-Example input:
+    Example input:
 
-"```json\n[{'plot_type': 'histogram', 'columns': ['Age'], 'title': 'Age Plot'}]\n```"
+    "json\n[{'plot_type': 'histogram', 'columns': ['Age'], 'title': 'Age Plot'}]"
 
-Expected output:
+    Expected output:
 
-[{'plot_type': 'histogram', 'columns': ['Age'], 'title': 'Age Plot'}]
+    [{'plot_type': 'histogram', 'columns': ['Age'], 'title': 'Age Plot'}]
     '''
     cleaned_response = (
         response
@@ -59,10 +59,7 @@ def validate_plot_recommendations(recommendations, df):
         if not isinstance(columns, list):
             continue
 
-        valid_columns = [
-            col for col in columns
-            if col in df.columns
-        ]
+        valid_columns = [col for col in columns if col in df.columns]
 
         if plot_type == "scatter" and len(valid_columns) != 2:
             continue
@@ -74,27 +71,17 @@ def validate_plot_recommendations(recommendations, df):
             {
                 "plot_type": plot_type,
                 "columns": valid_columns,
-                "title": title
-            }
-        )
+                "title": title 
+                })
 
     return valid_recommendations
 
 
 def recommend_plots(metadata, df, target_column=None, problem_type=None):
-    prompt = plot_recommendation_prompt(
-        metadata=metadata,
-        target_column=target_column,
-        problem_type=problem_type
-    )
+    prompt = plot_recommendation_prompt(metadata=metadata, target_column=target_column, problem_type=problem_type)
 
     response = ask_llm(prompt)
-
     recommendations = parse_plot_recommendations(response)
-
-    valid_recommendations = validate_plot_recommendations(
-        recommendations=recommendations,
-        df=df
-    )
+    valid_recommendations = validate_plot_recommendations(recommendations=recommendations, df=df)
 
     return valid_recommendations

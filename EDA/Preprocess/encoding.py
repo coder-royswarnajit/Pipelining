@@ -9,7 +9,6 @@ from Profiling.type_detection import detect_column_types
 def fit_encoders(X_train, metadata=None):
     """
     Fits encoders only on X_train.
-    If `metadata` provided, use metadata[col]['detected_type'] to avoid LLM.
     """
     encoders = {}
     if metadata and isinstance(metadata, dict):

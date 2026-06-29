@@ -5,11 +5,9 @@ def fit_outlier_bounds(X_train):
     """
 
     bounds = {}
-
     numeric_df = X_train.select_dtypes(include=["int64", "float64"])
 
     for col in numeric_df.columns:
-
         series = numeric_df[col].dropna()
 
         if series.empty:
@@ -29,10 +27,8 @@ def fit_outlier_bounds(X_train):
         lower_bound = q1 - (1.5 * iqr)
         upper_bound = q3 + (1.5 * iqr)
 
-        bounds[col] = {
-            "lower_bound": lower_bound,
-            "upper_bound": upper_bound
-        }
+        bounds[col] = {"lower_bound": lower_bound, 
+                       "upper_bound": upper_bound}
 
     return bounds
 

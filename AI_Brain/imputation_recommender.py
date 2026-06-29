@@ -24,19 +24,10 @@ def recommend_imputations(metadata):
         response = response.strip()
 
         if response.startswith("```json"):
-            response = (
-                response
-                .replace("```json", "")
-                .replace("```", "")
-                .strip()
-            )
+            response = (response.replace("```json", "").replace("```", "").strip())
 
         elif response.startswith("```"):
-            response = (
-                response
-                .replace("```", "")
-                .strip()
-            )
+            response = response.replace("```", "").strip()
 
         return json.loads(response)
 

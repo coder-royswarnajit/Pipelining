@@ -191,8 +191,10 @@ def run_model_pipeline(
             before_metrics=before_metrics,
             n_trials=30,
         )
+        
 
         best_result["hyperparameter_optimization"] = optimization_result
+        '''
         model_results["_optimization_info"] = {
             "best_model": best_model_name,
             "status": optimization_result.get("status"),
@@ -201,66 +203,66 @@ def run_model_pipeline(
             "best_cv_score": optimization_result.get("best_cv_score"),
             "error": optimization_result.get("error"),
             "reason": optimization_result.get("reason"),
-        }
+        }'''
+
+
 
         if optimization_result.get("status") == "success":
             best_result["model"] = tuned_model
+            
 
             for metric_name, metric_value in tuned_metrics.items():
                 best_result[metric_name] = metric_value
 
             if problem_type == "classification" and tuned_predictions is not None:
-                best_result["confusion_matrix"] = confusion_matrix(
-                    y_test.tolist(),
-                    tuned_predictions.tolist(),
-                ).tolist()
+                best_result["confusion_matrix"] = confusion_matrix(y_test.tolist(), tuned_predictions.tolist(),).tolist()
+            
             elif problem_type == "regression" and tuned_predictions is not None:
                 best_result["actual_values"] = y_test.tolist()
                 best_result["predicted_values"] = tuned_predictions.tolist()
 
-            shap_analysis = generate_shap_analysis(
-                model=tuned_model,
-                X_train=X_train_p,
-                X_test=X_test_p,
-                model_name=best_model_name,
-                problem_type=problem_type,
-            )
+        shap_analysis = generate_shap_analysis(
+                                                model=best_result["model"],
+                                                X_train=X_train_p,
+                                                X_test=X_test_p,
+                                                model_name=best_model_name,
+                                                problem_type=problem_type,
+                                            )
 
-            best_result["shap_analysis"] = shap_analysis
+        best_result["shap_analysis"] = shap_analysis
+        
+        if shap_analysis.get("status") == "success":
+            try:
+                from AI_Brain.shap_explainer import explain_shap_results
 
-            if shap_analysis.get("status") == "success":
-                try:
-                    from AI_Brain.optimization_explainer import explain_optimized_model
+                best_result["shap_business_explanation"] = explain_shap_results(
+                    shap_analysis=shap_analysis,
+                    target_column=target_column,
+                    problem_type=problem_type,
+                    model_name=best_model_name,
+                )
 
-                    best_result["optimization_business_explanation"] = explain_optimized_model(
-                        model_name=best_model_name,
-                        problem_type=problem_type,
-                        optimization_result=optimization_result,
-                        shap_analysis=shap_analysis,
-                    )
-                except Exception as e:
-                    best_result["optimization_business_explanation"] = (
-                        f"Optimization explanation unavailable: {str(e)}"
-                    )
+            except Exception as e:
+                best_result["shap_business_explanation"] = (f"SHAP business explanation unavailable: {str(e)}")
+        
+        if (optimization_result.get("status") == "success" and shap_analysis.get("status") == "success"):
+            try:
+                from AI_Brain.optimization_explainer import explain_optimized_model
 
-                try:
-                    from AI_Brain.shap_explainer import explain_shap_results
+                best_result["optimization_business_explanation"] = explain_optimized_model(
+                    model_name=best_model_name,
+                    problem_type=problem_type,
+                    optimization_result=optimization_result,
+                    shap_analysis=shap_analysis,
+                )
 
-                    best_result["shap_business_explanation"] = explain_shap_results(
-                        shap_analysis=shap_analysis,
-                        target_column=target_column,
-                        problem_type=problem_type,
-                        model_name=best_model_name,
-                    )
-                except Exception as e:
-                    best_result["shap_business_explanation"] = (
-                        f"SHAP business explanation unavailable: {str(e)}"
-                    )
-
-            model_results["_shap_info"] = {
-                "best_model": best_model_name,
-                "status": shap_analysis.get("status"),
-                "error": shap_analysis.get("error"),
-            }
+            except Exception as e:
+                best_result["optimization_business_explanation"] = (f"Optimization explanation unavailable: {str(e)}")
+        
+        model_results["_shap_info"] = {
+            "best_model": best_model_name,
+            "status": shap_analysis.get("status"),
+            "error": shap_analysis.get("error"),
+        }
 
     return model_results

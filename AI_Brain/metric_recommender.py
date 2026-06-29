@@ -26,14 +26,11 @@ def _build_target_context(df, target_column, problem_type):
 
     if problem_type == "classification":
         value_counts = series.value_counts(normalize=True).head(10)
-        context["class_distribution"] = {
-            str(label): round(float(pct) * 100, 2)
-            for label, pct in value_counts.items()
-        }
+        context["class_distribution"] = {str(label): round(float(pct) * 100, 2) for label, pct in value_counts.items()}
+        
         if len(value_counts) > 0:
-            context["majority_class_percent"] = round(
-                float(value_counts.iloc[0]) * 100, 2
-            )
+            context["majority_class_percent"] = round(float(value_counts.iloc[0]) * 100, 2)
+            
     else:
         if len(series) > 0 and series.dtype.kind in "biufc":
             context["target_stats"] = {
@@ -67,58 +64,6 @@ def _parse_metric_response(response):
     return {}
 
 
-def _rule_based_fallback(metadata, df, target_column, problem_type):
-    """
-    Deterministic fallback when the LLM response is missing or invalid.
-    """
-
-    problem_type = (problem_type or "").lower()
-    default_metric = get_default_ranking_metric(problem_type)
-
-    if problem_type == "classification" and target_column in df.columns:
-        series = df[target_column].dropna()
-        if len(series) > 0:
-            majority_pct = float(series.value_counts(normalize=True).iloc[0])
-            if majority_pct >= 0.80:
-                return {
-                    "metric": "recall",
-                    "reason": (
-                        "Majority class exceeds 80%, so recall helps prioritize "
-                        "performance on minority classes."
-                    ),
-                    "source": "rule_based_fallback",
-                }
-            if series.nunique() == 2:
-                return {
-                    "metric": "f1_score",
-                    "reason": (
-                        "Binary classification with moderate balance; F1 balances "
-                        "precision and recall."
-                    ),
-                    "source": "rule_based_fallback",
-                }
-
-    if problem_type == "regression" and target_column in df.columns:
-        series = df[target_column].dropna()
-        if len(series) > 0 and series.std() > 0:
-            cv = float(series.std() / abs(series.mean())) if series.mean() != 0 else 0
-            if cv > 0.5:
-                return {
-                    "metric": "mae",
-                    "reason": (
-                        "Target shows high relative spread; MAE is robust and "
-                        "easier to interpret than squared-error metrics."
-                    ),
-                    "source": "rule_based_fallback",
-                }
-
-    return {
-        "metric": default_metric,
-        "reason": f"Using default ranking metric for {problem_type}.",
-        "source": "rule_based_fallback",
-    }
-
-
 def recommend_ranking_metric(metadata, df, target_column=None, problem_type=None):
     """
     Uses metadata and sample rows to recommend the primary evaluation metric
@@ -148,10 +93,7 @@ def recommend_ranking_metric(metadata, df, target_column=None, problem_type=None
         response = ask_llm(prompt)
         parsed = _parse_metric_response(response)
 
-        metric = normalize_ranking_metric(
-            parsed.get("metric"),
-            problem_type,
-        )
+        metric = normalize_ranking_metric(parsed.get("metric"), problem_type,)
 
         if metric:
             resolved = resolve_ranking_metric(metric, problem_type)
@@ -159,19 +101,7 @@ def recommend_ranking_metric(metadata, df, target_column=None, problem_type=None
             if not reason:
                 reason = f"Recommended {metric} as the primary ranking metric."
 
-            return {
-                **resolved,
-                "reason": reason,
-                "source": "ai",
-            }
+            return {**resolved, "reason": reason, "source": "ai",}
 
     except Exception as e:
         print(f"Failed to generate metric recommendation: {e}")
-
-    fallback = _rule_based_fallback(metadata, df, target_column, problem_type)
-    resolved = resolve_ranking_metric(fallback["metric"], problem_type)
-    return {
-        **resolved,
-        "reason": fallback["reason"],
-        "source": fallback["source"],
-    }

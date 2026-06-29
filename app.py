@@ -27,7 +27,6 @@ if EDA_PATH not in sys.path:
 from Profiling import summary
 from Profiling.profiling_pipeline import run_eda_pipeline
 from Profiling.visualization import generate_ai_recommended_plots
-from Profiling.correlation import correlation_heatmap
 
 from AI_Brain.brain_pipeline import run_ai_brain_pipeline
 from AI_Brain.plot_explainer import explain_all_plots
@@ -368,7 +367,7 @@ def generate_full_html_report(eda_results,model_results):
         html += f"<p><strong>Ranking metric:</strong> {metric_name} ({direction}). {reason}</p>"
 
     for model_name, result in model_results.items():
-        if model_name in ["_ranking_info", "_shap_info"] or not isinstance(result, dict):
+        if model_name.startswith("_") or not isinstance(result, dict):
             continue
 
         html += f"<h2>{model_name}</h2>"
@@ -579,7 +578,7 @@ def main():
 
             st.divider()
 
-            run_analysis = st.button("Run Full Analysis", use_container_width=True)
+            run_analysis = st.button("Run Full Analysis", width="stretch")
 
             if run_analysis:
                 with st.spinner("Running EDA pipeline..."):
@@ -694,7 +693,7 @@ def main():
                     data=html_report,
                     file_name="eda_report.html",
                     mime="text/html",
-                    use_container_width=True
+                    width="stretch"
                 )
 
     # --- Tab 2: All Plots ---
@@ -711,7 +710,7 @@ def main():
 
             #if heatmap_path and os.path.exists(heatmap_path):
              #   st.subheader("Correlation Heatmap")
-              #  st.image(heatmap_path, use_container_width=True)
+              #  st.image(heatmap_path, width="stretch")
                 #st.divider()
                 
             plot_paths = eda_results.get("plot_paths", [])
@@ -772,6 +771,11 @@ def main():
 
                 plot_name = re.sub(r"^\d+_", "", plot_name)
                 plot_name = plot_name.replace("_", " ").title()
+                
+                words = plot_name.split()
+
+                if len(words) >= 2:
+                    plot_name = f"{words[0]} Of {' '.join(words[1:])}"
 
                 left_col, right_col = st.columns([3, 2])
 
@@ -833,7 +837,7 @@ def main():
             # Better Modelling removed per user request
 
             # Preview preprocessed dataset (leakage-safe: fit on train only)
-            if st.button("Preview Preprocessed Dataset", use_container_width=True):
+            if st.button("Preview Preprocessed Dataset", width="stretch"):
                 
                 with st.spinner("Preparing preprocessed preview..."):
                     X_train, X_test, y_train, y_test = split_data(df, target_column, problem_type)
@@ -868,7 +872,7 @@ def main():
                     X_test_p[target_column] = y_test_r
 
                     st.subheader("Preprocessed Dataset")
-                    st.dataframe(X_train_p.head(10), use_container_width=True)
+                    st.dataframe(X_train_p.head(10), width="stretch")
 
                     st.download_button(
                             label="Download Preprocessed Train",
@@ -896,7 +900,7 @@ def main():
 
                    # report_df = pd.DataFrame(report_rows)
 
-                    #st.dataframe(report_df, use_container_width=True, hide_index=True)
+                    #st.dataframe(report_df, width="stretch", hide_index=True)
 
             
             if "model_results" in st.session_state:
@@ -951,7 +955,9 @@ def main():
                                             "y_train",
                                             "y_test",
                                             "shap_analysis",
-                                            "shap_business_explanation"
+                                            "shap_business_explanation",
+                                            "hyperparameter_optimization",
+                                            "optimization_business_explanation",
                                         }
 
                                         display_result = {
@@ -972,7 +978,7 @@ def main():
 
                                         st.dataframe(
                                             result_df,
-                                            use_container_width=True,
+                                            width="stretch",
                                             hide_index=True
                                         )
                                         
@@ -989,7 +995,7 @@ def main():
 
                                                 st.dataframe(
                                                     history_df,
-                                                    use_container_width=True,
+                                                    width="stretch",
                                                     hide_index=True
                                                 )
                                         
@@ -1080,7 +1086,7 @@ def main():
                                                             f"{item.get('importance_pct', 0)}%"
                                                         ),
                                                     }
-                                                    for item in top_features
+                                                    for item in top_features[:3]
                                                 ]
                                             )
 
@@ -1093,7 +1099,7 @@ def main():
                                             )
                                             st.dataframe(
                                                 contribution_df,
-                                                use_container_width=True,
+                                                width="stretch",
                                                 hide_index=True
                                             )
 

@@ -20,10 +20,8 @@ def summarize_numeric_series(series):
     series = series.dropna()
 
     if series.empty:
-        return {
-            "count": 0,
-            "message": "No valid numeric values available."
-        }
+        return {"count": 0,
+                "message": "No valid numeric values available."}
 
     return {
         "count": int(series.count()),
@@ -36,19 +34,9 @@ def summarize_numeric_series(series):
     }
 
 
-def generate_ai_recommended_plots(
-    df,
-    plot_recommendations,
-    plot_folder="eda_plots"
-):
+def generate_ai_recommended_plots(df, plot_recommendations, plot_folder="eda_plots"):
     """
     Generates plots based on AI_Brain recommendations.
-
-    Returns:
-    {
-        "plot_paths": [...],
-        "plot_summaries": [...]
-    }
     """
 
     os.makedirs(plot_folder, exist_ok=True)
@@ -68,9 +56,7 @@ def generate_ai_recommended_plots(
         try:
             plt.figure(figsize=(8, 5))
 
-            plot_key = (
-                f"{i + 1}_{plot_type}_"
-                f"{safe_column_name('_'.join(map(str, columns)))}")
+            plot_key = (f"{i + 1}_{plot_type}_ of {safe_column_name('_'.join(map(str, columns)))}")
 
             summary = {
                 "plot_key": plot_key,
@@ -184,23 +170,14 @@ def generate_ai_recommended_plots(
                 x_col = columns[0]
                 y_col = columns[1]
 
-                if (
-                    not pd.api.types.is_numeric_dtype(df[x_col])
-                    or not pd.api.types.is_numeric_dtype(df[y_col])
-                ):
-                    print(
-                        f"Skipping scatter for non-numeric columns: {x_col}, {y_col}"
-                    )
+                if (not pd.api.types.is_numeric_dtype(df[x_col]) or not pd.api.types.is_numeric_dtype(df[y_col])):
+                    print(f"Skipping scatter for non-numeric columns: {x_col}, {y_col}")
                     plt.close()
                     continue
 
                 plot_df = df[[x_col, y_col]].dropna()
 
-                plt.scatter(
-                    plot_df[x_col],
-                    plot_df[y_col],
-                    alpha=0.7
-                )
+                plt.scatter(plot_df[x_col], plot_df[y_col], alpha=0.7)
 
                 plt.xlabel(x_col)
                 plt.ylabel(y_col)
@@ -208,10 +185,7 @@ def generate_ai_recommended_plots(
 
                 correlation = None
 
-                if (
-                    pd.api.types.is_numeric_dtype(plot_df[x_col])
-                    and pd.api.types.is_numeric_dtype(plot_df[y_col])
-                ):
+                if (pd.api.types.is_numeric_dtype(plot_df[x_col]) and pd.api.types.is_numeric_dtype(plot_df[y_col])):
                     correlation = plot_df[x_col].corr(plot_df[y_col])
 
                 summary["insights"] = {
@@ -227,13 +201,8 @@ def generate_ai_recommended_plots(
 
             plt.tight_layout()
 
-            # alt text generation removed (matplotalt not used)
- 
-            file_name = (
-                f"{i + 1}_{plot_type}_"
-                f"{safe_column_name('_'.join(map(str, columns)))}.png"
-            )
-
+            
+            file_name = (f"{i + 1}_{plot_type}_ {safe_column_name('_'.join(map(str, columns)))}.png")
             plot_path = os.path.join(plot_folder, file_name)
 
             plt.savefig(plot_path, bbox_inches="tight")
@@ -248,7 +217,4 @@ def generate_ai_recommended_plots(
             plt.close()
             print(f"Failed to generate {plot_type} for {columns}: {e}")
 
-    return {
-        "plot_paths": plot_paths,
-        "plot_summaries": plot_summaries
-    }
+    return {"plot_paths": plot_paths, "plot_summaries": plot_summaries}

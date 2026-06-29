@@ -13,9 +13,8 @@ def run_ai_brain_pipeline(
     run_imputation_recommendation=True,
     run_metric_recommendation=True,
     plot_summaries=None,
-    target_column=None,
-    problem_type=None,
-) -> dict:
+    target_column=None, 
+    problem_type=None) -> dict:
     """
     Runs AI analysis using EDA metadata and first 5 rows of dataset.
 
@@ -24,39 +23,19 @@ def run_ai_brain_pipeline(
     - optional EDA explanation using graph summaries
     """
 
-    ai_results = {
-        "target_column": target_column,
-        "problem_type": problem_type,
-    }
+    ai_results = {"target_column": target_column, "problem_type": problem_type,}
 
     if run_plot_recommendation:
-        plot_recommendations = recommend_plots(
-            metadata=metadata,
-            df=df,
-            target_column=target_column,
-            problem_type=problem_type
-        )
-
+        plot_recommendations = recommend_plots(metadata=metadata, df=df, target_column=target_column, problem_type=problem_type)
         ai_results["plot_recommendations"] = plot_recommendations
     
     if run_imputation_recommendation:
-        imputation_recommendations = (
-            recommend_imputations(
-                metadata=metadata
-            )
-        )
+        imputation_recommendations = recommend_imputations(metadata=metadata)
 
-        ai_results[
-            "imputation_recommendations"
-        ] = imputation_recommendations
+        ai_results["imputation_recommendations"] = imputation_recommendations
 
     if run_metric_recommendation:
-        ranking_metric_recommendation = recommend_ranking_metric(
-            metadata=metadata,
-            df=df,
-            target_column=target_column,
-            problem_type=problem_type,
-        )
+        ranking_metric_recommendation = recommend_ranking_metric(metadata=metadata, df=df, target_column=target_column, problem_type=problem_type,)
         ai_results["ranking_metric_recommendation"] = ranking_metric_recommendation
 
     if run_eda_explanation and eda_results is not None:
@@ -66,10 +45,8 @@ def run_ai_brain_pipeline(
             problem_type=problem_type,
             plot_recommendations=ai_results.get(
                 "plot_recommendations",
-                eda_results.get("plot_recommendations", [])
-            ),
-            plot_summaries=plot_summaries
-        )
+                eda_results.get("plot_recommendations", [])), 
+            plot_summaries=plot_summaries)
 
         ai_results["eda_explanation"] = eda_explanation
 

@@ -1,24 +1,17 @@
-import os
-
-from narwhals import col
-
-from Profiling import metadata
 from Profiling.summary import dataset_summary
 from Profiling.imbalance_report import analyze_class_imbalance
-from Profiling.correlation import correlation_heatmap
 from Profiling.eda_warnings import generate_warnings
 from Profiling.type_detection import detect_column_types
 from Profiling.outlier import detect_outliers
 from Profiling.skewness import detect_skewness
 from Profiling.cardinality import analyze_cardinality
+from Profiling.correlation import correlation_analysis
 
 
 
-def run_eda_pipeline(df, save_plots=True, plot_folder="eda_plots", target_column=None):
+def run_eda_pipeline(df, target_column=None):
 
     eda_results = {}
-
-    plot_paths = []
 
     eda_results["dataset_summary"] = dataset_summary(df)
 
@@ -30,6 +23,7 @@ def run_eda_pipeline(df, save_plots=True, plot_folder="eda_plots", target_column
     eda_results["outlier_report"] = detect_outliers(df, type_info=column_types)
     eda_results["skewness_report"] = detect_skewness(df, type_info=column_types, target_column=target_column)
     eda_results["cardinality_report"] = analyze_cardinality(df,type_info=column_types)
+    eda_results["correlation_report"] = correlation_analysis(df, type_info=column_types, target_column=target_column,)
 
     imbalance_report = None
     
@@ -68,29 +62,8 @@ def run_eda_pipeline(df, save_plots=True, plot_folder="eda_plots", target_column
             metadata[col]["cardinality_type"] = (eda_results["cardinality_report"][col]["cardinality_type"])
 
 
-    '''
-    if save_plots:
-        os.makedirs(plot_folder, exist_ok=True)
-
-        heatmap_result = correlation_heatmap(
-            df,
-            plot_folder=plot_folder,
-            type_info=column_types,
-            target_column=target_column
-        )
-        eda_results["heatmap_path"] = heatmap_result.get("plot_path")
-        eda_results["heatmap_summary"] = heatmap_result.get("plot_summary")
-        if heatmap_result is not None:
-            plot_paths.append(heatmap_result.get("plot_path"))
-
-        '''
     
     eda_results["metadata"] = metadata
-    #eda_results["plot_paths"] = plot_paths
     
-    eda_results["plot_paths"] = [
-    p for p in plot_paths
-    if isinstance(p, str) and p.strip()
-]
 
     return eda_results

@@ -9,10 +9,7 @@ def analyze_cardinality(df, type_info):
 
     cardinality_report = {}
 
-    allowed_types = [
-        "binary",
-        "categorical"
-    ]
+    allowed_types = ["binary", "categorical"]
 
     for col in df.columns:
         series = df[col].dropna()
@@ -20,10 +17,7 @@ def analyze_cardinality(df, type_info):
         if series.empty:
             continue
 
-        detected_type = type_info.get(col, {}).get(
-            "detected_type",
-            "unknown"
-        )
+        detected_type = type_info.get(col, {}).get("detected_type", "unknown")
 
         # Skip continuous columns
         if detected_type not in allowed_types:
@@ -32,11 +26,7 @@ def analyze_cardinality(df, type_info):
         non_null_count = series.notna().sum()
         unique_count = series.nunique(dropna=True)
 
-        unique_ratio = (
-            unique_count / non_null_count
-            if non_null_count > 0
-            else 0
-        )
+        unique_ratio = (unique_count / non_null_count if non_null_count > 0 else 0)
 
         if unique_ratio == 1.0:
             cardinality_type = "Identifier"

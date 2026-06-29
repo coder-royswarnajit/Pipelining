@@ -93,7 +93,7 @@ def _space_decision_tree_regressor(trial):
         "min_samples_leaf": trial.suggest_int("min_samples_leaf", 1, 15),
         "criterion": trial.suggest_categorical(
             "criterion",
-            ["squared_error", "absolute_error", "friedman_mse"],
+            ["squared_error", "absolute_error"],
         ),
     }
 
